@@ -44,43 +44,23 @@ function isPrivilegedRole(r) {
 }
 
 function getAllServerRolesIds(){
-    var roleIds = [];
-    for (var role in bot.servers[server.id].roles) {
-        roleIds.push(bot.servers[server.id].roles[role].id);
-    }
-    return roleIds;
+    return Object.keys(bot.servers[server.id].roles);
 }
 
 function getAllServerRoles(){
-    var roles = [];
-    for (var role in bot.servers[server.id].roles) {
-        roles.push(bot.servers[server.id].roles[role]);
-    }
-    return roles;
+    return Object.values(bot.servers[server.id].roles);
 }
 
 function getAllServerChannelIds(){
-    var channels = [];
-    for (var channel in bot.servers[server.id].channels) {
-        channels.push(channel);
-    }
-    return channels;
+    return Object.keys(bot.servers[server.id].channels);
 }
 
 function getAllServerMemberIds(){
-    var memberIds = [];
-    for (var member in bot.servers[server.id].members) {
-        memberIds.push(bot.servers[server.id].members[member].id);
-    }
-    return memberIds;
+    return Object.keys(bot.servers[server.id].members);
 }
 
 function getAllServerMembers(){
-    var members = [];
-    for (var member in bot.servers[server.id].members) {
-        members.push(bot.servers[server.id].members[member]);
-    }
-    return members;
+    return Object.values(bot.servers[server.id].members);
 }
 
 function getMember(mId){
@@ -88,11 +68,7 @@ function getMember(mId){
 }
 
 function getUsers(userIds){
-    var users = [];
-    userIds.forEach(function(id,index){
-        users.push(bot.users[id]);
-    });
-    return users;
+    return Object.values(bot.users);
 }
 
 function getAllRoleMembers(rId){
