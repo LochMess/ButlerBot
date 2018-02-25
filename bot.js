@@ -2,7 +2,6 @@ var Discord = require('discord.io');
 var fs = require('fs');
 var help = require('./help.json');
 
-//TODO git IGNORE auth.json and server.json.
 var auth = require('./auth.json');
 var server = require('./server.json');
 
@@ -123,17 +122,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
         var cmd = args[0];
 
         switch(cmd) {
-            case 'ping':
-                bot.sendMessage({
-                    to: channelID,
-                    message: 'Pong!'
-                });
-                break;
-            case 'lookbusy':
-                bot.simulateTyping(
-                    channelID
-                );
-                break;
+//DEBUG commands
             case 'run':
 //TODO Dangerous remove later.
                 if ( userID === server.ownerID && message.substring(message.indexOf(' ')).substring(0, 1) != '!'){
@@ -146,63 +135,37 @@ bot.on('message', function (user, userID, channelID, message, event) {
             case 'rfull':
                 console.log(getAllServerRoles());
                 break;
-            case 'createRole':
-                var color = message.substring(message.search('-c ')+3);
-                var colorDec = parseInt(color.substring(1), 16);
-                var name = message.substring(message.indexOf(' ')+1,message.search('-c ')).trim();
-                if (!(getAllServerRoles().map(role => role.name).includes(name)) && !(getAllServerRoles().map(role => role.color).includes(colorDec))){
-                    bot.createRole(server.id, function(error, response){
-                        if(error){
-                            console.log(error);
-                        }else{
-                            console.log(response);
-                            bot.editRole({
-                                serverID: server.id,
-                                roleID: response.id,
-                                name: name,
-                                mentionable: true,
-                                color: color
-                            }, function(error, response){
-                                if(error){
-                                    console.log(error);
-                                }else{
-                                    console.log(response);
-                                    bot.sendMessage({
-                                        to: channelID,
-                                        message: 'New role <@&'+response.id+'> created.'
-                                    });
-                                }
-                            });
-                        }
-                    });
-                }
-                else {
+            //General commands
+            case 'ping':
+                bot.sendMessage({
+                    to: channelID,
+                    message: 'Pong!'
+                });
+                break;
+            case 'lookbusy':
+                bot.simulateTyping(
+                    channelID
+                );
+                break;
+            case 'google':
+                if (args[1] != undefined) {
                     bot.sendMessage({
                         to: channelID,
-                        message: 'Name or color already taken.'
+                        message: 'https://www.google.com.au/search?q='+args.slice(1).join('+')
                     });
                 }
                 break;
-            case 'deleteRole':
-                var roleID = getRoleString(args[1]);
-                if(getMember(userID).roles.includes(server.privilegeRoles.modRole) && args[1] != undefined && !isPrivilegedRole(roleID)){
-                    bot.deleteRole({
-                        serverID: server.id,
-                        roleID: getRoleString(args[1])
-                    }, function(error, response){
-                        if(error){
-                            console.log(error);
-                        }
-                        else{
-                            console.log(response);
-                            bot.sendMessage({
-                                to: channelID,
-                                message: 'Role deleted. Like totally forever RIP.'
-                            });
-                        }
-                    });
+            case 'help':
+                var helpMessage = 'Current commands below, source code https://github.com/LochMess/ButlerBot\n';
+                for (var command in help) {
+                    helpMessage += '!'+command+': '+help[command]+'\n';
                 }
+                bot.sendMessage({
+                    to: channelID,
+                    message: helpMessage
+                });
                 break;
+//Role query commands
             case 'roles':
                 bot.sendMessage({
                     to: channelID,
@@ -235,20 +198,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                     message: botReply
                 });
                 break;
-            case 'createRole':
-                bot.sendMessage({
-                    to: channelID,
-                    message: 'Coming Soon!'
-                });
-                break;
-            case 'google':
-                if (args[1] != undefined) {
-                    bot.sendMessage({
-                        to: channelID,
-                        message: 'https://www.google.com.au/search?q='+args.slice(1).join('+')
-                    });
-                }
-                break;
+//Role change commands
             case 'join':
                 if (args[1] != undefined) {
                     var roleId = getRoleString(args[1]);
@@ -288,7 +238,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                             if(error===null){
                                 bot.sendMessage({
                                     to: channelID,
-//TODO look to see if can colour message text the same as the colour of the role.
+            //TODO look to see if can colour message text the same as the colour of the role.
                                     message: 'Congratulations <@'+userID+'> you\'ve left @'+bot.servers[server.id].roles[roleId].name
                                 });
                             }
@@ -298,15 +248,64 @@ bot.on('message', function (user, userID, channelID, message, event) {
                     }
                 }
                 break;
-            case 'help':
-                var helpMessage = 'Current commands below, source code https://github.com/LochMess/ButlerBot\n';
-                for (var command in help) {
-                    helpMessage += '!'+command+': '+help[command]+'\n';
+//Role creation commands
+            case 'createRole':
+                var color = message.substring(message.search('-c ')+3);
+                var colorDec = parseInt(color.substring(1), 16);
+                var name = message.substring(message.indexOf(' ')+1,message.search('-c ')).trim();
+                if (!(getAllServerRoles().map(role => role.name).includes(name)) && !(getAllServerRoles().map(role => role.color).includes(colorDec))){
+                    bot.createRole(server.id, function(error, response){
+                        if(error){
+                            console.log(error);
+                        }else{
+                            console.log(response);
+                            bot.editRole({
+                                serverID: server.id,
+                                roleID: response.id,
+                                name: name,
+                                mentionable: true,
+                                color: color
+                            }, function(error, response){
+                                if(error){
+                                    console.log(error);
+                                }else{
+                                    console.log(response);
+                                    bot.sendMessage({
+                                        to: channelID,
+                                        message: 'New role <@&'+response.id+'> created.'
+                                    });
+                                }
+                            });
+                        }
+                    });
                 }
-                bot.sendMessage({
-                    to: channelID,
-                    message: helpMessage
-                });
+                else {
+                    bot.sendMessage({
+                        to: channelID,
+                        message: 'Name or color already taken.'
+                    });
+                }
+                break;
+//Role deletion commands
+            case 'deleteRole':
+                var roleID = getRoleString(args[1]);
+                if(getMember(userID).roles.includes(server.privilegeRoles.modRole) && args[1] != undefined && !isPrivilegedRole(roleID)){
+                    bot.deleteRole({
+                        serverID: server.id,
+                        roleID: getRoleString(args[1])
+                    }, function(error, response){
+                        if(error){
+                            console.log(error);
+                        }
+                        else{
+                            console.log(response);
+                            bot.sendMessage({
+                                to: channelID,
+                                message: 'Role deleted. Like totally forever RIP.'
+                            });
+                        }
+                    });
+                }
                 break;
             default:
                 bot.sendMessage({
