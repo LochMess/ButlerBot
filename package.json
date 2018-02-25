@@ -1,0 +1,20 @@
+{
+  "name": "bulter.discord.bot",
+  "version": "1.0.0",
+  "description": "Role management and stuff.",
+  "main": "bot.js",
+  "author": "LochMess",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LochMess/ButlerBot.git"
+  },
+  "scripts": {
+    "devStart": "nodemon bot.js"
+  },
+  "dependencies": {
+    "discord.io": "github:woor/discord.io#gateway_v6"
+  },
+  "devDependencies": {
+    "nodemon": "^1.15.1"
+  }
+}
