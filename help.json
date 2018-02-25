@@ -1,0 +1,12 @@
+{
+    "ping": "Bot replies with Pong!",
+    "lookbusy":  "Makes the bot appear to type for a period of time.",
+    "join": "Used to join roles ie !join @CSGO",
+    "leave": "Used to leave roles ie !leave @CSGO",
+    "roles": "List all roles on the server.",
+    "myRoles": "List all of the roles you have.",
+    "roleMembers": "List all the members of a role ie !roleMembers @CSGO",
+    "createRole": "Create a new role for you and your squad, name it with a colour code in hex following the -c flag ie !createRole Your role name here -c #ffb3ff\nhttps://www.w3schools.com/colors/colors_picker.asp",
+    "deleteRole": "Moderators only: Delete a non-privileged role ie !deleteRole @made by a jerk",
+    "google": "Generate a google search url for the message following the command ie !google is the earth round"
+}
