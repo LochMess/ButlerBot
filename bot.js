@@ -122,19 +122,6 @@ bot.on('message', function (user, userID, channelID, message, event) {
         var cmd = args[0];
 
         switch(cmd) {
-//DEBUG commands
-            case 'run':
-//TODO Dangerous remove later.
-                if ( userID === server.ownerID && message.substring(message.indexOf(' ')).substring(0, 1) != '!'){
-                    console.log(eval(message.substring(message.indexOf(' ')+1)));
-                }
-                break;
-            case 'sfull':
-                console.log(bot.servers[server.id]);
-                break;
-            case 'rfull':
-                console.log(getAllServerRoles());
-                break;
             //General commands
             case 'ping':
                 bot.sendMessage({
