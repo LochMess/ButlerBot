@@ -121,6 +121,17 @@ bot.on('message', function (user, userID, channelID, message, event) {
         var args = message.substring(1).split(' ');
         var cmd = args[0];
 
+//Do on a new branch.
+//create object containing all the commands in a grouped structure,
+//if command from group, and users roles match a role with sufficient privilege stored in the servers.json
+//call a function that has a switch statement containing all those grouped commands
+//Add a command that only server owners can call, !config debug:0-9, 0=owner only, 9= everyone
+//get serverId when get message so can access the correct authentication
+
+
+
+
+
         switch(cmd) {
 //DEBUG commands
             case 'run':
