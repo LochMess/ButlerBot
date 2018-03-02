@@ -25,9 +25,9 @@ if (fs.existsSync('./servers.json')){
 // console.log(serversConfig["139345322722852865"].privilegeRoles);
 // console.log(serversConfig.privilegeRoles.admins.roles);
 // console.log(serversConfig.commandAccessLevels);
-console.log(serversConfig["123"]);
-console.log('space but not the x');
-console.log(serversConfig["139345322722852865"]);
+// console.log(serversConfig["123"]);
+// console.log('space but not the x');
+// console.log(serversConfig["139345322722852865"]);
 
 // Initialize Discord Bot
 var bot = new Discord.Client({
@@ -88,7 +88,12 @@ function getMember(mId, sID){
 
 //TODO look at this shouldn't need to pass it anything.
 function getUsers(userIds){
-    return Object.values(bot.users);
+    // return Object.values(bot.users);
+    var users = [];
+    userIds.forEach(function(id,index){
+        users.push(bot.users[id]);
+    });
+    return users;
 }
 
 function getAllRoleMembers(rId, sID){
@@ -211,16 +216,16 @@ bot.on('message', function (user, userID, channelID, message, event) {
         var serverID;
         serverID = bot.channels[channelID].guild_id;
         if (!Object.keys(serversConfig).includes(serverID)) {
-            console.log('Server is NOT in the config file');
+            // console.log('Server is NOT in the config file');
             addNewServer(serverID);
         }
         else {
-            console.log('Server is in the config file');
+            // console.log('Server is in the config file');
             // addNewServer(serverID);
         }
 
         console.log(message);
-        console.log(bot.channels[channelID].guild_id);
+        // console.log(bot.channels[channelID].guild_id);
 
         var args = message.substring(1).split(' ');
         var cmd = args[0];
@@ -241,7 +246,42 @@ bot.on('message', function (user, userID, channelID, message, event) {
         console.log('User access level is: '+userAccessLevel);
 //TODO add config commands to allow permissions configuration of a bot on a server.
         if(userID === serversConfig[serverID].ownerID){
-
+            switch(cmd) {
+                case 'config':
+                    //parse commands here using the commandAccessLevels to allow them to be set
+                    args.forEach(function(item, index){
+                        if ( Object.keys(serversConfig[serverID].commandAccessLevels).includes(item) && args[index+1] != undefined && 0<= args[index+1] <=9) {
+                            serversConfig[serverID].commandAccessLevels[item] = Number(args[index+1]);
+                            console.log(item+' set to '+args[index+1]);
+                        }
+                    });
+                    fs.writeFile('./servers.json', JSON.stringify(serversConfig, null, 4), function(error){
+                        if (error) throw error;
+                    });
+                    serversConfig = require('./servers.json');
+                    // for(var command in args) {
+                    //     if ( )
+                    // }
+                    // console.log(Object.keys(serversConfig[serverID].commandAccessLevels));
+                    commandExecuted = true;
+                    break;
+                case 'configShow':
+                    //display the current server config ie command levels
+                    bot.sendMessage({
+                        to: channelID,
+                        message: JSON.stringify(serversConfig[serverID].commandAccessLevels, null, 4)
+                    });
+                    commandExecuted = true;
+                    break;
+                case 'configHelp':
+                    //print config help to help admins configure bot
+                    bot.sendMessage({
+                        to: channelID,
+                        message: 'Set command access levels by !config followed by a command access level followed by an integer representing the access level, 0 = owner, 1 = admins, 2 = mods, 3 = bots, 4 = regulars, 9 = everyone. Command access levels: '+Object.keys(serversConfig[serverID].commandAccessLevels).join(', ')+'. Example !config general 9'
+                    });
+                    commandExecuted = true;
+                    break;
+            }
         }
         if(userAccessLevel <= serversConfig[serverID].commandAccessLevels.debug && commandExecuted === false){
             console.log('if debug');
@@ -322,6 +362,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                     });
                     commandExecuted = true;
                     break;
+//TODO roleMembers is hecking borked.
                 case 'roleMembers':
                     if (args[1] != undefined) {
                         var members = getAllRoleMembers(getRoleString(args[1]), serverID);
@@ -474,8 +515,12 @@ bot.on('message', function (user, userID, channelID, message, event) {
                     break;
             }
         }
-        else {
+        if(commandExecuted === false) {
             //no command as executed permission issue or command issue.
+            bot.sendMessage({
+                to: channelID,
+                message: 'Sorry that is not a command or you do not have access to it. More help coming soon! Try !help'
+            });
         }
         console.log('if ! close');
     }//if ! close
