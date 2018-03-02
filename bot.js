@@ -7,21 +7,27 @@ var auth = require('./auth.json');
 var serversConfig;
 
 //check servers directory exists
-if (!fs.existsSync('./servers')){
-    fs.mkdirSync('./servers');
-}
+// if (!fs.existsSync('./servers')){
+//     fs.mkdirSync('./servers');
+// }
 
 //check if servers.json exists and load config
 if (fs.existsSync('./servers.json')){
     serversConfig = require('./servers.json');
+    // serversConfig.push(require('./servers.json'));
 } else{
     fs.appendFile('./servers.json', '', function(error){
         if (error) throw error;
     });
+    // serversConfig.push(require('./servers.json'));
+    serversConfig = require('./servers.json');
 }
 // console.log(serversConfig["139345322722852865"].privilegeRoles);
 // console.log(serversConfig.privilegeRoles.admins.roles);
 // console.log(serversConfig.commandAccessLevels);
+console.log(serversConfig["123"]);
+console.log('space but not the x');
+console.log(serversConfig["139345322722852865"]);
 
 // Initialize Discord Bot
 var bot = new Discord.Client({
@@ -33,13 +39,13 @@ bot.on('ready', function (evt) {
     console.log('Logged in as: ');
     console.log(bot.username + ' - (' + bot.id + ')');
     //check for servers config files for bots servers
-    Object.keys(bot.servers).forEach(function(serverID, index){
-        if (!fs.existsSync('./servers/'+serverID+'.json')){
-            fs.appendFile('./servers/'+serverID+'.json', '', function(error){
-                if (error) throw error;
-            });
-        }
-    });
+    // Object.keys(bot.servers).forEach(function(serverID, index){
+    //     if (!fs.existsSync('./servers/'+serverID+'.json')){
+    //         fs.appendFile('./servers/'+serverID+'.json', '', function(error){
+    //             if (error) throw error;
+    //         });
+    //     }
+    // });
 });
 
 function getRoleString(s) {
@@ -158,6 +164,41 @@ function getUserAccessLevel(userId, sID){
     }
 }
 
+function addNewServer(sID){
+    var newServer = {
+                        [sID]: {
+                            "id": sID,
+                            "ownerID": bot.servers[sID].owner_id,
+                            "privilegeRoles": {
+                                "admins": {"accessLevel": 1, "roles": []},
+                                "mods": {"accessLevel": 2, "roles": []},
+                                "bots": {"accessLevel": 3, "roles": []},
+                                "regulars": {"accessLevel": 4, "roles": []}
+                            },
+                            "commandAccessLevels": {
+                                "debug": 0,
+                                "general": 0,
+                                "roleQuery": 0,
+                                "roleChange": 0,
+                                "roleCreation": 0,
+                                "roleDeletion": 0
+                            }
+                        }
+                    };
+    // console.log(newServer);
+    // serversConfig.push(newServer);
+    //serversConfig.add(newServer);
+    //serversConfig = [serversConfig, newServer];
+    //console.log(serversConfig);
+    // fs.appendFile('./servers.json', JSON.stringify(serversConfig, null, 4).substring(0,JSON.stringify(serversConfig, null, 4).lastIndexOf('}'))+','+JSON.stringify(newServer, null, 4).substring(1), function(error){
+    //     if (error) throw error;
+    // });
+    fs.writeFile('./servers.json', JSON.stringify(serversConfig, null, 4).substring(0,JSON.stringify(serversConfig, null, 4).lastIndexOf('}'))+','+JSON.stringify(newServer, null, 4).substring(1), function(error){
+        if (error) throw error;
+    });
+    serversConfig = require('./servers.json');
+}
+
 bot.on('disconnect', function(msg, code){
     if (code === 0) return console.error(msg);
     bot.connect();
@@ -166,6 +207,18 @@ bot.on('disconnect', function(msg, code){
 bot.on('message', function (user, userID, channelID, message, event) {
     // if (message.substring(0, 1) === '!' && userID != serversConfig[serverID].privilegeRoles.botRole) {
     if (message.substring(0, 1) === '!') {
+        //if server not in config add it with defaults
+        var serverID;
+        serverID = bot.channels[channelID].guild_id;
+        if (!Object.keys(serversConfig).includes(serverID)) {
+            console.log('Server is NOT in the config file');
+            addNewServer(serverID);
+        }
+        else {
+            console.log('Server is in the config file');
+            // addNewServer(serverID);
+        }
+
         console.log(message);
         console.log(bot.channels[channelID].guild_id);
 
@@ -186,14 +239,17 @@ bot.on('message', function (user, userID, channelID, message, event) {
         userAccessLevel = getUserAccessLevel(userID, serverID);
         var commandExecuted = false;
         console.log('User access level is: '+userAccessLevel);
+//TODO add config commands to allow permissions configuration of a bot on a server.
+        if(userID === serversConfig[serverID].ownerID){
 
-        if(userAccessLevel <= serversConfig[serverID].commandAccessLevels.debug){
+        }
+        if(userAccessLevel <= serversConfig[serverID].commandAccessLevels.debug && commandExecuted === false){
             console.log('if debug');
             switch(cmd) {
 //DEBUG commands
                 case 'run':
 //TODO Dangerous remove later.
-                    if ( userID === servers[serverID].ownerID && message.substring(message.indexOf(' ')).substring(0, 1) != '!'){
+                    if ( userID === serversConfig[serverID].ownerID && message.substring(message.indexOf(' ')).substring(0, 1) != '!'){
                         console.log(eval(message.substring(message.indexOf(' ')+1)));
                     }
                     commandExecuted = true;
