@@ -174,6 +174,7 @@ function addNewServer(sID){
                         [sID]: {
                             "id": sID,
                             "ownerID": bot.servers[sID].owner_id,
+                            "commandCharacter": "!",
                             "privilegeRoles": {
                                 "admins": {"accessLevel": 1, "roles": []},
                                 "mods": {"accessLevel": 2, "roles": []},
@@ -210,19 +211,19 @@ bot.on('disconnect', function(msg, code){
 });
 
 bot.on('message', function (user, userID, channelID, message, event) {
+    //if server not in config add it with defaults
+    var serverID;
+    serverID = bot.channels[channelID].guild_id;
+    if (!Object.keys(serversConfig).includes(serverID)) {
+        // console.log('Server is NOT in the config file');
+        addNewServer(serverID);
+    }
+    else {
+        // console.log('Server is in the config file');
+        // addNewServer(serverID);
+    }
     // if (message.substring(0, 1) === '!' && userID != serversConfig[serverID].privilegeRoles.botRole) {
-    if (message.substring(0, 1) === '!') {
-        //if server not in config add it with defaults
-        var serverID;
-        serverID = bot.channels[channelID].guild_id;
-        if (!Object.keys(serversConfig).includes(serverID)) {
-            // console.log('Server is NOT in the config file');
-            addNewServer(serverID);
-        }
-        else {
-            // console.log('Server is in the config file');
-            // addNewServer(serverID);
-        }
+    if (message.substring(0, 1) === serversConfig[serverID].commandCharacter) {
 
         console.log(message);
         // console.log(bot.channels[channelID].guild_id);
@@ -248,28 +249,65 @@ bot.on('message', function (user, userID, channelID, message, event) {
         if(userID === serversConfig[serverID].ownerID){
             switch(cmd) {
                 case 'config':
-                    //parse commands here using the commandAccessLevels to allow them to be set
+                    //TODO allow roles to be added to the privilegeRoles arrays
+
+                    //maybe for loop through the args starting from the one that matched checking for numbers indicating a role then stop when stop getting roles. Check length of string and numbers in it etc
+                    if ( args[1] === 'commandCharacter' && args[2] != undefined) {
+                        serversConfig[serverID].commandCharacter = args[2];
+                    }
+
+                    //privilegeRoles setting
+                    var remove = false;
+                    if ( args[1] === 'remove' ) {
+                        console.log('REMOVING');
+                        remove = true;
+                    }
+                    args.forEach(function(item, index){
+                        if ( Object.keys(serversConfig[serverID].privilegeRoles).includes(item) && args[index+1] != undefined ) {
+                            for (var i = index+1; i < args.length; i++) {
+                                if (args[i].length === 22 && args[i].indexOf('<') === 0 && args[i].indexOf('@') === 1 && args[i].indexOf('&') === 2 && args[i].indexOf('>') === 21 && 0 <= Number(args[i].substring(3,21)) <= 999999999999999999) {
+                                    if ( serversConfig[serverID].privilegeRoles[item].roles.includes(getRoleString(args[i])) && remove === true ) {
+                                        // console.log('deciding whether to add or remove');
+                                        if (remove) {
+                                            console.log('if remove');
+                                            var indexToRemove = serversConfig[serverID].privilegeRoles[item].roles.indexOf(getRoleString(args[i]));
+                                            console.log('indexToRemove: '+indexToRemove);
+                                            if( indexToRemove > -1 ) {
+                                                console.log('REMOVED');
+                                                console.log(serversConfig[serverID].privilegeRoles[item].roles.splice(indexToRemove, 1));
+                                                serversConfig[serverID].privilegeRoles[item].roles.splice(indexToRemove, 1);
+                                                console.log(serversConfig[serverID].privilegeRoles[item].roles);
+                                            }
+                                        }
+                                    }
+                                    if( !serversConfig[serverID].privilegeRoles[item].roles.includes(getRoleString(args[i])) && remove === false) {
+                                        console.log('ADDED');
+                                        serversConfig[serverID].privilegeRoles[item].roles.push(getRoleString(args[i]));
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    //commandAccessLevels setting
                     args.forEach(function(item, index){
                         if ( Object.keys(serversConfig[serverID].commandAccessLevels).includes(item) && args[index+1] != undefined && 0<= args[index+1] <=9) {
                             serversConfig[serverID].commandAccessLevels[item] = Number(args[index+1]);
                             console.log(item+' set to '+args[index+1]);
                         }
                     });
+                    console.log(serversConfig[serverID].privilegeRoles);
                     fs.writeFile('./servers.json', JSON.stringify(serversConfig, null, 4), function(error){
                         if (error) throw error;
                     });
                     serversConfig = require('./servers.json');
-                    // for(var command in args) {
-                    //     if ( )
-                    // }
-                    // console.log(Object.keys(serversConfig[serverID].commandAccessLevels));
                     commandExecuted = true;
                     break;
                 case 'configShow':
                     //display the current server config ie command levels
                     bot.sendMessage({
                         to: channelID,
-                        message: JSON.stringify(serversConfig[serverID].commandAccessLevels, null, 4)
+                        message: JSON.stringify(serversConfig[serverID], null, 4)
+                        // message: JSON.stringify(serversConfig[serverID].commandAccessLevels, null, 4)
                     });
                     commandExecuted = true;
                     break;
@@ -277,7 +315,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                     //print config help to help admins configure bot
                     bot.sendMessage({
                         to: channelID,
-                        message: 'Set command access levels by !config followed by a command access level followed by an integer representing the access level, 0 = owner, 1 = admins, 2 = mods, 3 = bots, 4 = regulars, 9 = everyone. Command access levels: '+Object.keys(serversConfig[serverID].commandAccessLevels).join(', ')+'. Example !config general 9'
+                        message: 'Show current bot server configuration with !configShow\nChange the command character used to call the bot for example to \'$\', !config commandCharacter $\nChange which roles are considered privileged by the bot with for example to add a mod role as an admin, !config mods @moderators and to remove this !config remove mods @moderator\nSet command access levels by !config followed by a command access level followed by an integer representing the access level, 0 = owner, 1 = admins, 2 = mods, 3 = bots, 4 = regulars, 9 = everyone. Command access levels: '+Object.keys(serversConfig[serverID].commandAccessLevels).join(', ')+'. Example !config general 9'
                     });
                     commandExecuted = true;
                     break;
