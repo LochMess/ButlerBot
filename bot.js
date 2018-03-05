@@ -54,34 +54,18 @@ var fs = require('fs');
 var help = require('./help.json');
 
 var auth = require('./auth.json');
-//var server = require('./server.json');
 var serversConfig;
 
-//check servers directory exists
-// if (!fs.existsSync('./servers')){
-//     fs.mkdirSync('./servers');
-// }
-
-//check if servers.json exists and load config
-if (fs.existsSync('./servers.json')){
+if (fs.existsSync('./servers.json')) {
     serversConfig = require('./servers.json');
-    // serversConfig.push(require('./servers.json'));
-} else{
+}
+else {
     fs.appendFile('./servers.json', '{}', function(error){
         if (error) throw error;
         serversConfig = require('./servers.json');
     });
-    // serversConfig.push(require('./servers.json'));
-
 }
-// console.log(serversConfig["139345322722852865"].privilegeRoles);
-// console.log(serversConfig.privilegeRoles.admins.roles);
-// console.log(serversConfig.commandAccessLevels);
-// console.log(serversConfig["123"]);
-// console.log('space but not the x');
-// console.log(serversConfig["139345322722852865"]);
 
-// Initialize Discord Bot
 var bot = new Discord.Client({
    token: auth.token,
    autorun: true
@@ -90,14 +74,6 @@ bot.on('ready', function (evt) {
     console.log('Connected');
     console.log('Logged in as: ');
     console.log(bot.username + ' - (' + bot.id + ')');
-    //check for servers config files for bots servers
-    // Object.keys(bot.servers).forEach(function(serverID, index){
-    //     if (!fs.existsSync('./servers/'+serverID+'.json')){
-    //         fs.appendFile('./servers/'+serverID+'.json', '', function(error){
-    //             if (error) throw error;
-    //         });
-    //     }
-    // });
 });
 
 function getRoleString(s) {
@@ -105,14 +81,14 @@ function getRoleString(s) {
 }
 
 //TODO refactor for servers, should be depreciated
-function isPrivilegedRole(r) {
-    for (var role in server.privilegeRoles) {
-        if (r===server.privilegeRoles[role]){
-            return true;
-        }
-    }
-    return false;
-}
+// function isPrivilegedRole(r) {
+//     for (var role in server.privilegeRoles) {
+//         if (r===server.privilegeRoles[role]) {
+//             return true;
+//         }
+//     }
+//     return false;
+// }
 
 function getAllServerRolesIds(sID){
     return Object.keys(bot.servers[sID].roles);
@@ -139,7 +115,6 @@ function getMember(mId, sID){
 }
 
 function getUsers(userIds){
-    // return Object.values(bot.users);
     var users = [];
     userIds.forEach(function(id,index){
         users.push(bot.users[id]);
@@ -152,7 +127,7 @@ function getAllRoleMembers(rId, sID){
     var membersInRole = [];
     members.forEach(function(member, index){
         member.roles.forEach(function(role, index){
-            if(role === rId){
+            if (role === rId) {
                 membersInRole.push(member);
             }
         });
@@ -165,7 +140,7 @@ function getAllRoleMemberIds(rId, sID){
     var membersInRole = [];
     members.forEach(function(member, index){
         member.roles.forEach(function(role, index){
-            if(role === rId){
+            if (role === rId) {
                 membersInRole.push(member.id);
             }
         });
@@ -176,10 +151,10 @@ function getAllRoleMemberIds(rId, sID){
 function getRoleNames(roleIdList, sID){
     var names = [];
     roleIdList.forEach(function(item,index){
-        if (bot.servers[sID].roles[item].name.substring(0,1) != '@'){
+        if (bot.servers[sID].roles[item].name.substring(0,1) != '@') {
             names.push(bot.servers[sID].roles[item].name);
         }
-        else{
+        else {
             names.push(bot.servers[sID].roles[item].name.substring(1));
         }
     });
@@ -187,8 +162,8 @@ function getRoleNames(roleIdList, sID){
 }
 
 function listsIntersect(list1, list2){
-    for (value of list1){
-        if(list2.includes(value)){
+    for (value of list1) {
+        if (list2.includes(value)) {
             return true;
         }
     }
@@ -196,22 +171,22 @@ function listsIntersect(list1, list2){
 }
 
 function getUserAccessLevel(userId, sID){
-    if(userId === serversConfig[sID].ownerID){
+    if (userId === serversConfig[sID].ownerID) {
             return 0;
     }
-    else if(listsIntersect(bot.servers[sID].members[userId].roles,serversConfig[sID].privilegeRoles.admins.roles)){
+    else if (listsIntersect(bot.servers[sID].members[userId].roles,serversConfig[sID].privilegeRoles.admins.roles)) {
         console.log('User has admin privileges on this server');
         return serversConfig[sID].privilegeRoles.admins.accessLevel;
     }
-    else if(listsIntersect(bot.servers[sID].members[userId].roles,serversConfig[sID].privilegeRoles.mods.roles)){
+    else if (listsIntersect(bot.servers[sID].members[userId].roles,serversConfig[sID].privilegeRoles.mods.roles)) {
         console.log('User has mod privileges on this server');
         return serversConfig[sID].privilegeRoles.mods.accessLevel;
     }
-    else if(listsIntersect(bot.servers[sID].members[userId].roles,serversConfig[sID].privilegeRoles.bots.roles)){
+    else if (listsIntersect(bot.servers[sID].members[userId].roles,serversConfig[sID].privilegeRoles.bots.roles)) {
         console.log('User has bot privileges on this server');
         return serversConfig[sID].privilegeRoles.bots.accessLevel;
     }
-    else if(listsIntersect(bot.servers[sID].members[userId].roles,serversConfig[sID].privilegeRoles.regulars.roles)){
+    else if (listsIntersect(bot.servers[sID].members[userId].roles,serversConfig[sID].privilegeRoles.regulars.roles)) {
         console.log('User has regular privileges on this server');
         return serversConfig[sID].privilegeRoles.regulars.accessLevel;
     }
@@ -222,9 +197,9 @@ function getUserAccessLevel(userId, sID){
 
 function getHelpCommandDescription(hCmd, uAL, sID){
     for (var group of Object.keys(help)) {
-        if ( uAL <= serversConfig[sID].commandAccessLevels[group] ) {
+        if (uAL <= serversConfig[sID].commandAccessLevels[group]) {
             for (var command of Object.keys(help[group])) {
-                if ( hCmd === command ) {
+                if (hCmd === command) {
                     return help[group][command];
                 }
             }
@@ -256,7 +231,7 @@ function addNewServer(sID){
                             }
                         }
                     };
-    if ( Object.keys(serversConfig).length === 0 && serversConfig.constructor === Object ) {
+    if (Object.keys(serversConfig).length === 0 && serversConfig.constructor === Object) {
         fs.writeFileSync('./servers.json', JSON.stringify(newServer, null, 4));
         return JSON.parse(fs.readFileSync('./servers.json', 'utf8'));
 
@@ -273,7 +248,6 @@ bot.on('disconnect', function(msg, code){
 });
 
 bot.on('message', function (user, userID, channelID, message, event) {
-
     var serverID;
     serverID = bot.channels[channelID].guild_id;
     if (!Object.keys(serversConfig).includes(serverID)) {
@@ -293,31 +267,31 @@ bot.on('message', function (user, userID, channelID, message, event) {
         var commandExecuted = false;
         console.log('User access level is: '+userAccessLevel);
 
-        if(userID === serversConfig[serverID].ownerID){
+        if (userID === serversConfig[serverID].ownerID) {
             switch(cmd) {
                 case 'config':
 
-                    if ( args[1] === 'commandCharacter' && args[2] != undefined) {
+                    if (args[1] === 'commandCharacter' && args[2] != undefined) {
                         serversConfig[serverID].commandCharacter = args[2];
                     }
 
                     var remove = false;
-                    if ( args[1] === 'remove' ) {
+                    if (args[1] === 'remove') {
                         remove = true;
                     }
                     args.forEach(function(item, index){
-                        if ( Object.keys(serversConfig[serverID].privilegeRoles).includes(item) && args[index+1] != undefined ) {
+                        if (Object.keys(serversConfig[serverID].privilegeRoles).includes(item) && args[index+1] != undefined) {
                             for (var i = index+1; i < args.length; i++) {
                                 if (args[i].length === 22 && args[i].indexOf('<') === 0 && args[i].indexOf('@') === 1 && args[i].indexOf('&') === 2 && args[i].indexOf('>') === 21 && 0 <= Number(args[i].substring(3,21)) <= 999999999999999999) {
-                                    if ( serversConfig[serverID].privilegeRoles[item].roles.includes(getRoleString(args[i])) && remove === true ) {
+                                    if (serversConfig[serverID].privilegeRoles[item].roles.includes(getRoleString(args[i])) && remove === true) {
                                         if (remove) {
                                             var indexToRemove = serversConfig[serverID].privilegeRoles[item].roles.indexOf(getRoleString(args[i]));
-                                            if( indexToRemove > -1 ) {
+                                            if (indexToRemove > -1) {
                                                 serversConfig[serverID].privilegeRoles[item].roles.splice(indexToRemove, 1);
                                             }
                                         }
                                     }
-                                    if( !serversConfig[serverID].privilegeRoles[item].roles.includes(getRoleString(args[i])) && remove === false) {
+                                    if (!serversConfig[serverID].privilegeRoles[item].roles.includes(getRoleString(args[i])) && remove === false) {
                                         serversConfig[serverID].privilegeRoles[item].roles.push(getRoleString(args[i]));
                                     }
                                 }
@@ -326,15 +300,16 @@ bot.on('message', function (user, userID, channelID, message, event) {
                     });
 
                     args.forEach(function(item, index){
-                        if ( Object.keys(serversConfig[serverID].commandAccessLevels).includes(item) && args[index+1] != undefined && 0<= args[index+1] <=9) {
+                        if (Object.keys(serversConfig[serverID].commandAccessLevels).includes(item) && args[index+1] != undefined && 0<= args[index+1] <=9) {
                             serversConfig[serverID].commandAccessLevels[item] = Number(args[index+1]);
                         }
                     });
 
                     fs.writeFile('./servers.json', JSON.stringify(serversConfig, null, 4), function(error){
                         if (error) throw error;
+                        console.log('RELOADING config');
+                        serversConfig = require('./servers.json');
                     });
-                    serversConfig = require('./servers.json');
                     commandExecuted = true;
                     break;
                 case 'configShow':
@@ -346,15 +321,8 @@ bot.on('message', function (user, userID, channelID, message, event) {
                     break;
             }
         }
-        if(userAccessLevel <= serversConfig[serverID].commandAccessLevels.debug && commandExecuted === false){
+        if (userAccessLevel <= serversConfig[serverID].commandAccessLevels.debug && commandExecuted === false) {
             switch(cmd) {
-                case 'run':
-//TODO Dangerous remove later.
-                    if ( userID === serversConfig[serverID].ownerID && message.substring(message.indexOf(' ')).substring(0, 1) != '!'){
-                        console.log(eval(message.substring(message.indexOf(' ')+1)));
-                    }
-                    commandExecuted = true;
-                    break;
                 case 'sfull':
                     console.log(bot.servers[serverID]);
                     commandExecuted = true;
@@ -398,7 +366,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                     break;
                 case 'help':
                     var helpMessage = '';
-                    if ( args[1] === undefined ) {
+                    if (args[1] === undefined) {
                         helpMessage += 'You have access to the following commands, to learn more about a command use !help <command>\n'
                         Object.keys(help).forEach(function(item, index){
                             if (userAccessLevel <= serversConfig[serverID].commandAccessLevels[item]) {
@@ -418,7 +386,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                     break;
             }
         }
-        if(userAccessLevel <= serversConfig[serverID].commandAccessLevels.roleQuery && commandExecuted === false){
+        if (userAccessLevel <= serversConfig[serverID].commandAccessLevels.roleQuery && commandExecuted === false) {
             switch(cmd) {
                 case 'roles':
                     bot.sendMessage({
@@ -440,11 +408,11 @@ bot.on('message', function (user, userID, channelID, message, event) {
                         var members = getAllRoleMembers(getRoleString(args[1]), serverID);
                         var usersInRole = getUsers(members.map(member => member.id));
                         var botReply = '';
-                        for(var id in members.map(member => member.id)){
+                        for (var id in members.map(member => member.id)) {
                             if (members[id].nick === undefined || members[id].nick === null) {
                                 botReply += 'U: '+usersInRole[id].username+'#'+usersInRole[id].discriminator+'\n';
                             }
-                            else{
+                            else {
                                 botReply += 'U: '+usersInRole[id].username+'#'+usersInRole[id].discriminator+' N: '+members[id].nick+'\n';
                             }
                         }
@@ -457,13 +425,13 @@ bot.on('message', function (user, userID, channelID, message, event) {
                     break;
             }
         }
-        if(userAccessLevel <= serversConfig[serverID].commandAccessLevels.roleChange && commandExecuted === false){
+        if (userAccessLevel <= serversConfig[serverID].commandAccessLevels.roleChange && commandExecuted === false) {
             switch(cmd) {
                 case 'join':
                     if (args[1] != undefined) {
                         var roleId = getRoleString(args[1]);
                         var privilegedRole = isPrivilegedRole(roleId);
-                        if (privilegedRole === false){
+                        if (privilegedRole === false) {
                             bot.addToRole({
                                 serverID: serverID,
                                 userID: userID,
@@ -471,7 +439,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                             }, function(error,response){
                                 console.log('!join error');
                                 console.log(error);
-                                if(error===null){
+                                if (error === null) {
                                     bot.sendMessage({
                                         to: channelID,
                                         message: 'Congratulations <@'+userID+'> you\'ve been added to @'+bot.servers[serverID].roles[roleId].name
@@ -488,7 +456,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                     if (args[1] != undefined) {
                         var roleId = getRoleString(args[1]);
                         var privilegedRole = isPrivilegedRole(roleId);
-                        if (privilegedRole === false){
+                        if (privilegedRole === false) {
                             bot.removeFromRole({
                                 serverID: serverID,
                                 userID: userID,
@@ -496,7 +464,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                             }, function(error,response){
                                 console.log('!leave error');
                                 console.log(error);
-                                if(error===null){
+                                if (error === null) {
                                     bot.sendMessage({
                                         to: channelID,
 //TODO look to see if can colour message text the same as the colour of the role.
@@ -512,17 +480,18 @@ bot.on('message', function (user, userID, channelID, message, event) {
                     break;
             }
         }
-        if(userAccessLevel <= serversConfig[serverID].commandAccessLevels.roleCreation && commandExecuted === false){
+        if (userAccessLevel <= serversConfig[serverID].commandAccessLevels.roleCreation && commandExecuted === false) {
             switch (cmd) {
                 case 'createRole':
                     var color = message.substring(message.search('-c ')+3);
                     var colorDec = parseInt(color.substring(1), 16);
                     var name = message.substring(message.indexOf(' ')+1,message.search('-c ')).trim();
-                    if (!(getAllServerRoles(serverID).map(role => role.name).includes(name)) && !(getAllServerRoles(serverID).map(role => role.color).includes(colorDec))){
+                    if (!(getAllServerRoles(serverID).map(role => role.name).includes(name)) && !(getAllServerRoles(serverID).map(role => role.color).includes(colorDec))) {
                         bot.createRole(serverID, function(error, response){
-                            if(error){
+                            if (error) {
                                 console.log(error);
-                            }else{
+                            }
+                            else {
                                 console.log(response);
                                 bot.editRole({
                                     serverID: serverID,
@@ -531,9 +500,10 @@ bot.on('message', function (user, userID, channelID, message, event) {
                                     mentionable: true,
                                     color: color
                                 }, function(error, response){
-                                    if(error){
+                                    if (error) {
                                         console.log(error);
-                                    }else{
+                                    }
+                                    else {
                                         console.log(response);
                                         bot.sendMessage({
                                             to: channelID,
@@ -554,21 +524,19 @@ bot.on('message', function (user, userID, channelID, message, event) {
                     break;
             }
         }
-        if(userAccessLevel <= serversConfig[serverID].commandAccessLevels.roleDeletion && commandExecuted === false){
+        if (userAccessLevel <= serversConfig[serverID].commandAccessLevels.roleDeletion && commandExecuted === false) {
             switch(cmd) {
                 case 'deleteRole':
                     var roleID = getRoleString(args[1]);
-
-                    //if(getMember(userID, serverID).roles.includes(serversConfig[serverID].privilegeRoles.modRole) && args[1] != undefined && !isPrivilegedRole(roleID)){
                     if (args[1] != undefined) {
                         bot.deleteRole({
                             serverID: serverID,
                             roleID: getRoleString(args[1])
                         }, function(error, response){
-                            if(error){
+                            if (error) {
                                 console.log(error);
                             }
-                            else{
+                            else {
                                 console.log(response);
                                 bot.sendMessage({
                                     to: channelID,
@@ -581,12 +549,11 @@ bot.on('message', function (user, userID, channelID, message, event) {
                     break;
             }
         }
-        if(commandExecuted === false) {
+        if (commandExecuted === false) {
             bot.sendMessage({
                 to: channelID,
                 message: 'Sorry that is not a command or you do not have access to it. More help coming soon! Try !help'
             });
         }
-    }//if ! close
-    // }
+    }
 });//on close
