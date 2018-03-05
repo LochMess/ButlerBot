@@ -322,7 +322,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                         helpMessage += 'You have access to the following commands, to learn more about a command use !help <command>\n'
                         Object.keys(help).forEach(function(item, index){
                             if (userAccessLevel <= serversConfig[serverID].commandAccessLevels[item]) {
-                                helpMessage += '!'+Object.keys(help[item]).join('\n!')+'\n';
+                                helpMessage += serversConfig[serverID].commandCharacter+Object.keys(help[item]).join('\n'+serversConfig[serverID].commandCharacter)+'\n';
                             }
                         });
                     }
