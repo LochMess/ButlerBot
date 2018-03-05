@@ -59,7 +59,7 @@ The access levels are integers with owner = 0, admins = 1, mods = 2, bots = 3 an
 Privileged roles are roles that are recognised by the bot and grant users that have the server roles that are assigned to these privileged the corresponding access level.
 
 Server roles maybe assigned to privileged roles, by using the `!config` command followed by the privileged role followed by tagging the roles to be added to this privileged role.
-Example,
+Examples,
 
 `!config admins @admins`<br/>
 `!config admins @admins @Administrators regulars @TheRegulars @trusted`
@@ -78,3 +78,10 @@ Example,
 `!config general 9`
 
 Note: You can view all the command groups by using `!configShow`. Access levels owner = 0, admins = 1, mods = 2, bots = 3, regulars = 4 and, anyone on the server = 9.
+
+#### Command Character
+The string that the bot looks for, can be changed to any string of characters without a space within it, by using the `!config commandCharacter` command.
+Examples,
+
+`!config commandCharacter $`<br/>
+`!config commandCharacter cool`
