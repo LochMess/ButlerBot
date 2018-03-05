@@ -45,26 +45,36 @@ Now finally you can run the bot,
 ## Configuration
 The default command character that the bot will respond to is `!` and initially only the discord server owner will have permission to have the bot run a command.
 
-#### Access Levels
-The access levels are integers with owner = 0, admins = 1, mods = 2, bots = 3 and, regulars = 4. If a user is not in a role that is set as one of these privileged roles then they have an access level of 9.
-
-#### Privileged Roles
-Assign roles in the server to privileged roles recognised by the bot, members of these roles will have the access levels associated with each mentioned above.
-This can be done one at a time or in bulk for example,
-
-`!config admins @admins`<br/>
-`!config admins @admins @Administrators regulars @TheRegulars @trusted`
-
-Roles can be removed from privilege roles by instead using `!config remove` for example,
-
-`!config remove admins @NotAnAdminRole`
-
-#### Command Access Levels
-All the bot commands are grouped and a user must have a low enough access level to access the commands within a group. The access level required to access various commands can be set by the server owner by using the `!config` command followed by the access level group to change for example to give everyone access to general commands,
-
-`!config general 9`
-
 #### Display Server Configuration
 All the stored details and configuration for the bot on the current server can be displayed in its full raw JSON form by using,
 
 `!configShow`
+
+This shows the required access levels to access the various groups of commands, the groups of commands can be seen in the `commandAccessLevels` section.
+
+#### Access Levels
+The access levels are integers with owner = 0, admins = 1, mods = 2, bots = 3 and, regulars = 4. If a user is not in a role that is set as one of these privileged roles then they have an access level of 9.
+
+#### Privileged Roles
+Privileged roles are roles that are recognised by the bot and grant users that have the server roles that are assigned to these privileged the corresponding access level.
+
+Server roles maybe assigned to privileged roles, by using the `!config` command followed by the privileged role followed by tagging the roles to be added to this privileged role.
+Example,
+
+`!config admins @admins`<br/>
+`!config admins @admins @Administrators regulars @TheRegulars @trusted`
+
+Roles can be removed from privileged roles by instead using `!config remove` followed by the privileged role.
+Example,
+
+`!config remove admins @NotAnAdminRole`
+
+Note: You can view all the privileged roles by using `!configShow`
+
+#### Command Access Levels
+All the bot commands are grouped and a user must have a low enough access level to access the commands within a group. The access level required to access various commands, can be set by the server owner by using the `!config` command followed by the access level group to change.
+Example,
+
+`!config general 9`
+
+Note: You can view all the command groups by using `!configShow`. Access levels owner = 0, admins = 1, mods = 2, bots = 3, regulars = 4 and, anyone on the server = 9.
