@@ -200,6 +200,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
     serverID = bot.channels[channelID].guild_id;
     if (!Object.keys(serversConfig).includes(serverID)) {
         console.log('Server is NOT in the config file');
+//TODO Fix issue where when a new server is added to the bot it requires the bot to be restarted before the owner can set permissions.
         serversConfig = addNewServer(serverID);
         console.log(serversConfig);
     }
