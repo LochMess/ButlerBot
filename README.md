@@ -58,7 +58,7 @@ The access levels are integers with owner = 0, admins = 1, mods = 2, bots = 3 an
 #### Privileged Roles
 Privileged roles are roles that are recognised by the bot and grant users that have the server roles that are assigned to these privileged the corresponding access level.
 
-Server roles maybe assigned to privileged roles, by using the `!config` command followed by the privileged role followed by tagging the roles to be added to this privileged role.
+Server roles are assigned to privileged roles, by using the `!config` command followed by the privileged role followed by tagging the roles to be added to this privileged role.
 Examples,
 
 `!config admins @admins`<br/>
