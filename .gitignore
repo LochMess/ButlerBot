@@ -1,5 +1,4 @@
 /node_modules/
-/servers/
 /auth.json
-/server.json
+/servers.json
 /npm-debug.log
