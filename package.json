@@ -1,6 +1,6 @@
 {
   "name": "bulter.discord.bot",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Role management and stuff.",
   "main": "bot.js",
   "author": "LochMess",

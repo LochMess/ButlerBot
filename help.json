@@ -1,12 +1,29 @@
 {
-    "ping": "Bot replies with Pong!",
-    "lookbusy":  "Makes the bot appear to type for a period of time.",
-    "join": "Used to join roles ie !join @CSGO",
-    "leave": "Used to leave roles ie !leave @CSGO",
-    "roles": "List all roles on the server.",
-    "myRoles": "List all of the roles you have.",
-    "roleMembers": "List all the members of a role ie !roleMembers @CSGO",
-    "createRole": "Create a new role for you and your squad, name it with a colour code in hex following the -c flag ie !createRole Your role name here -c #ffb3ff\nhttps://www.w3schools.com/colors/colors_picker.asp",
-    "deleteRole": "Moderators only: Delete a non-privileged role ie !deleteRole @made by a jerk",
-    "google": "Generate a google search url for the message following the command ie !google is the earth round"
+    "debug": {
+    },
+    "configBot": {
+        "config": "Use: !config commandCharacter <new character to trigger the bot>\n!config <privilege Role> <tag role here>\n!config remove <privilege Role> <tag role here> \nDescription: Configure the bot for the current server, allocate roles to roles recognised by the bot, and assign command permissions.",
+        "configShow": "Use: !configShow\nDescription: Shows the current stored bot configuration for the current server."
+    },
+    "general": {
+        "ping": "Use: !ping\nDescription: Bot replies with Pong!",
+        "lookbusy":  "Use: !lookbusy\nDescription: Makes the bot appear to type for a period of time.",
+        "google": "Use: !google <search query string here>\nDescription: Generates a google search url using the given string as the query for the search.",
+        "source": "Use: !source\nDescription: The source code for this bot can be found at, https://github.com/LochMess/ButlerBot"
+    },
+    "roleQuery": {
+        "roles": "Use: !roles\nDescription: List all the roles on the server.",
+        "myRoles": "Use: !myRoles\nDescription: List all of the roles you have on the current server.",
+        "roleMembers": "Use: !roleMembers <tag role here>\nDescription: List all the members of the given role."
+    },
+    "roleChange": {
+        "join": "Use: !join <tag role here>\nDescription: Used to join roles.",
+        "leave": "Use: !leave <tag role here>\nDescription: Used to leave roles."
+    },
+    "roleCreation": {
+        "createRole": "Use: !createRole <role name here> -c <role colour in hex here>\nDescription: Create a new role for you and your squad. Hex colour selector https://www.w3schools.com/colors/colors_picker.asp"
+    },
+    "roleDeletion": {
+        "deleteRole": "Use: !deleteRole <tag role here>\nDescription: Delete a role."
+    }
 }
