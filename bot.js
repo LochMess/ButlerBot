@@ -29,15 +29,19 @@ function getRoleString(s) {
     return s.substring(s.indexOf('&')+1,s.indexOf('>'));
 }
 
-//TODO refactor for servers, should be depreciated
-// function isPrivilegedRole(r) {
-//     for (var role in server.privilegeRoles) {
-//         if (r===server.privilegeRoles[role]) {
-//             return true;
-//         }
-//     }
-//     return false;
-// }
+
+function isPrivilegedRole(rID, sID) {
+    for (var group of Object.keys(serversConfig[sID].privilegeRoles)) {
+        // for (var role of serversConfig[sID].privilegeRoles[group] )
+        if (serversConfig[sID].privilegeRoles[group].roles.includes(rID)) {
+            return true;
+        }
+        // if (rID === serversConfig[sID].privilegeRoles[role]) {
+        //     return true;
+        // }
+    }
+    return false;
+}
 
 function getAllServerRolesIds(sID){
     return Object.keys(bot.servers[sID].roles);
@@ -258,6 +262,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                         if (error) throw error;
                         console.log('RELOADING config');
                         serversConfig = require('./servers.json');
+                        console.log(serversConfig);
                     });
                     commandExecuted = true;
                     break;
@@ -379,7 +384,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                 case 'join':
                     if (args[1] != undefined) {
                         var roleId = getRoleString(args[1]);
-                        var privilegedRole = isPrivilegedRole(roleId);
+                        var privilegedRole = isPrivilegedRole(roleId, serverID);
                         if (privilegedRole === false) {
                             bot.addToRole({
                                 serverID: serverID,
@@ -404,7 +409,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                 case 'leave':
                     if (args[1] != undefined) {
                         var roleId = getRoleString(args[1]);
-                        var privilegedRole = isPrivilegedRole(roleId);
+                        var privilegedRole = isPrivilegedRole(roleId, serverID);
                         if (privilegedRole === false) {
                             bot.removeFromRole({
                                 serverID: serverID,
