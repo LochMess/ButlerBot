@@ -29,16 +29,11 @@ function getRoleString(s) {
     return s.substring(s.indexOf('&')+1,s.indexOf('>'));
 }
 
-
 function isPrivilegedRole(rID, sID) {
     for (var group of Object.keys(serversConfig[sID].privilegeRoles)) {
-        // for (var role of serversConfig[sID].privilegeRoles[group] )
         if (serversConfig[sID].privilegeRoles[group].roles.includes(rID)) {
             return true;
         }
-        // if (rID === serversConfig[sID].privilegeRoles[role]) {
-        //     return true;
-        // }
     }
     return false;
 }
@@ -247,6 +242,9 @@ bot.on('message', function (user, userID, channelID, message, event) {
                                     if (!serversConfig[serverID].privilegeRoles[item].roles.includes(getRoleString(args[i])) && remove === false) {
                                         serversConfig[serverID].privilegeRoles[item].roles.push(getRoleString(args[i]));
                                     }
+                                }
+                                else {
+                                    i = args.length;
                                 }
                             }
                         }
