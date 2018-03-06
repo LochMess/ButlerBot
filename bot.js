@@ -260,7 +260,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                     fs.writeFile('./servers.json', JSON.stringify(serversConfig, null, 4), function(error){
                         if (error) throw error;
                         console.log('RELOADING config');
-                        serversConfig = require('./servers.json');
+                        serversConfig = JSON.parse(fs.readFileSync('./servers.json', 'utf8'));
                         console.log(serversConfig);
                     });
                     commandExecuted = true;
