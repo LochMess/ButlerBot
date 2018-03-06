@@ -99,7 +99,7 @@ function getAllRoleMemberIds(rId, sID){
 function getRoleNames(roleIdList, sID){
     var names = [];
     roleIdList.forEach(function(item,index){
-        if (item != undefined) {
+        if (item != 'undefined') {
             if (bot.servers[sID].roles[item].name.substring(0,1) != '@') {
                 names.push(bot.servers[sID].roles[item].name);
             }
