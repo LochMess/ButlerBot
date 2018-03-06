@@ -98,16 +98,16 @@ function getAllRoleMemberIds(rId, sID){
 
 function getRoleNames(roleIdList, sID){
     var names = [];
-    if (bot.servers[sID].roles[item].name != undefined) {
-        roleIdList.forEach(function(item,index){
+    roleIdList.forEach(function(item,index){
+        if (item != undefined) {
             if (bot.servers[sID].roles[item].name.substring(0,1) != '@') {
                 names.push(bot.servers[sID].roles[item].name);
             }
             else {
                 names.push(bot.servers[sID].roles[item].name.substring(1));
             }
-        });
-    }
+        }
+    });
     return names;
 }
 
