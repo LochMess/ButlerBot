@@ -216,7 +216,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
         var commandExecuted = false;
         console.log('User access level is: '+userAccessLevel);
 
-        if (userID === serversConfig[serverID].ownerID) {
+        if (userID === serversConfig[serverID].ownerID || userAccessLevel <= serversConfig[serverID].commandAccessLevels.configBot) {
             switch(cmd) {
                 case 'config':
 
