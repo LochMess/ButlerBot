@@ -5,6 +5,7 @@ var help = require('./help.json');
 var auth = require('./auth.json');
 var serversConfig;
 
+//TODO add new permissions to existing config files.
 if (fs.existsSync('./servers.json')) {
     serversConfig = require('./servers.json');
 }
@@ -273,6 +274,12 @@ bot.on('message', function (user, userID, channelID, message, event) {
                         message: JSON.stringify(serversConfig[serverID], null, 4)
                     });
                     commandExecuted = true;
+                    break;
+            }
+        }
+        if (userAccessLevel <= serversConfig[serverID].messageDeletion && commandExecuted === false) {
+            switch(cmd) {
+                case 'deleteMessages':
                     break;
             }
         }
