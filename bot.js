@@ -159,6 +159,41 @@ function getHelpCommandDescription(hCmd, uAL, sID){
     return 'That is not a command.';
 }
 
+function getLastMessagesFrom(userID, channelID, numberOfMessages, messageIDs, lastMessageID, callback){
+    var numberOfMessagesToRetrieve = 50; // Default 50, limit 100, needs to be more than 1 for function to work.
+    if (messageIDs === null) {
+        var messageIDs = [];
+    }
+
+    bot.getMessages({
+        channelID: channelID,
+        before: lastMessageID,
+        limit: numberOfMessagesToRetrieve
+    }, function(error, messageArray) {
+        if (error) {
+            console.log(error);
+        }
+        else {
+            // console.log(messageArray);
+        }
+        messageArray.forEach(function(item, index) {
+            if (item.author.id === userID && messageIDs.length < numberOfMessages) {
+                messageIDs.push(item.id);
+            }
+            lastMessageID = item.id;
+        });
+        if (messageIDs.length < numberOfMessages && numberOfMessagesToRetrieve === messageArray.length) {
+            console.log('we have to go deeperLeonardoDiCaprico.jpeg');
+            console.log(messageIDs.length, numberOfMessages, numberOfMessagesToRetrieve, messageArray.length);
+            getLastMessagesFrom(userID, channelID, numberOfMessages, messageIDs, lastMessageID, callback);
+        }
+        else {
+            console.log('Calling back');
+            callback(messageIDs);
+        }
+    });
+}
+
 function addNewServer(sID){
     var newServer = {
                         [sID]: {
@@ -277,9 +312,51 @@ bot.on('message', function (user, userID, channelID, message, event) {
                     break;
             }
         }
-        if (userAccessLevel <= serversConfig[serverID].messageDeletion && commandExecuted === false) {
+        if (userAccessLevel <= serversConfig[serverID].commandAccessLevels.messageDeletion && commandExecuted === false) {
             switch(cmd) {
                 case 'deleteMessages':
+                    getLastMessagesFrom(userID, channelID, 10, null, null, function(messagesToDelete){
+                        console.log('getLastMessagesFrom callback executing to remove the following messages');
+                        console.log(messagesToDelete);
+                        //TODO must pass at least 2 messages and at max 100...
+                        //TODO can only bulk delete messages that are less than 14 days old...
+                        bot.deleteMessages({
+                            channelID: channelID,
+                            messageIDs: messagesToDelete
+                        }, function(error,response){
+                            if (error) {
+                                console.log(error);
+                                bot.sendMessage({
+                                    to: channelID,
+                                    message: 'Error encountered when attempting to delete messages.'
+                                }, function(error,response){
+                                    if (error) {
+                                        console.log(error);
+                                    }
+                                    else {
+                                        console.log(response);
+                                    }
+                                });
+                            }
+                            else {
+                                console.log(response);
+                                bot.sendMessage({
+                                    to: channelID,
+                                    message: 'Messages deleted.'
+                                }, function(error,response){
+                                    if (error) {
+                                        console.log(error);
+                                    }
+                                    else {
+                                        console.log(response);
+                                    }
+                                });
+                            }
+                        });
+
+                    });
+                    console.log('execution after function call resumed.');
+                    commandExecuted = true;
                     break;
             }
         }
