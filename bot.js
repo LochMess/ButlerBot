@@ -180,8 +180,8 @@ function getLastMessagesFrom(userID, channelID, numberOfMessages, messageIDs, la
             // Add check for if the message is less than 14 days old.
             var current = new Date();
             var messageDate = new Date(item.timestamp);
-            console.log(current, messageDate);
-            console.log(Math.abs(current.getTime() - messageDate.getTime()) / (1000*60*60*24) < 14);
+            // console.log(current, messageDate);
+            // console.log(Math.abs(current.getTime() - messageDate.getTime()) / (1000*60*60*24) < 14);
             // console.log(item.timestamp);
             // console.log(Object.prototype.toString.call(new Date(item.timestamp+'Z')) === '[object Date]');
             if (item.author.id === userID && messageIDs.length < numberOfMessages && Math.abs(current.getTime() - messageDate.getTime()) / (1000*60*60*24) < 14) {
@@ -190,8 +190,8 @@ function getLastMessagesFrom(userID, channelID, numberOfMessages, messageIDs, la
             lastMessageID = item.id;
         });
         if (messageIDs.length < numberOfMessages && numberOfMessagesToRetrieve === messageArray.length) {
-            console.log('we have to go deeperLeonardoDiCaprico.jpeg');
-            console.log(messageIDs.length, numberOfMessages, numberOfMessagesToRetrieve, messageArray.length);
+            // console.log('we have to go deeperLeonardoDiCaprico.jpeg');
+            // console.log(messageIDs.length, numberOfMessages, numberOfMessagesToRetrieve, messageArray.length);
             getLastMessagesFrom(userID, channelID, numberOfMessages, messageIDs, lastMessageID, callback);
         }
         else {
@@ -219,7 +219,7 @@ function deleteMessages(messagesToDelete, channelID){
                 console.log(error);
                 bot.sendMessage({
                     to: channelID,
-                    message: 'Error encountered when attempting to delete messages.'
+                    message: 'Error encountered when attempting to delete messages. Bulk delete API'
                 }, function(error,response){
                     if (error) {
                         console.log(error);
@@ -231,9 +231,11 @@ function deleteMessages(messagesToDelete, channelID){
             }
             else {
                 console.log(response);
-                setTimeout( function() {
-                    deleteMessages(messagesToDelete.slice(endSlice, messagesToDelete.length), channelID);
-                }, 1000); // Delay recusrion call by 1 second to avoid Discord API rate limiting.
+                if (endSlice != messagesToDelete.length) {
+                    setTimeout( function() {
+                        deleteMessages(messagesToDelete.slice(endSlice, messagesToDelete.length), channelID);
+                    }, 1000); // Delay recusrion call by 1 second to avoid Discord API rate limiting.
+                }
                 bot.sendMessage({
                     to: channelID,
                     message: 'Messages deleted.'
@@ -257,7 +259,7 @@ function deleteMessages(messagesToDelete, channelID){
                 console.log(error);
                 bot.sendMessage({
                     to: channelID,
-                    message: 'Error encountered when attempting to delete messages.'
+                    message: 'Error encountered when attempting to delete messages. Singular delete API.'
                 }, function(error,response){
                     if (error) {
                         console.log(error);
