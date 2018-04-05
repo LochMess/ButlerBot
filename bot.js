@@ -177,7 +177,14 @@ function getLastMessagesFrom(userID, channelID, numberOfMessages, messageIDs, la
             // console.log(messageArray);
         }
         messageArray.forEach(function(item, index) {
-            if (item.author.id === userID && messageIDs.length < numberOfMessages) {
+            // Add check for if the message is less than 14 days old.
+            var current = new Date();
+            var messageDate = new Date(item.timestamp);
+            console.log(current, messageDate);
+            console.log(Math.abs(current.getTime() - messageDate.getTime()) / (1000*60*60*24) < 14);
+            // console.log(item.timestamp);
+            // console.log(Object.prototype.toString.call(new Date(item.timestamp+'Z')) === '[object Date]');
+            if (item.author.id === userID && messageIDs.length < numberOfMessages && Math.abs(current.getTime() - messageDate.getTime()) / (1000*60*60*24) < 14) {
                 messageIDs.push(item.id);
             }
             lastMessageID = item.id;
@@ -189,9 +196,112 @@ function getLastMessagesFrom(userID, channelID, numberOfMessages, messageIDs, la
         }
         else {
             console.log('Calling back');
-            callback(messageIDs);
+            callback(messageIDs, channelID);
         }
     });
+}
+
+function deleteMessages(messagesToDelete, channelID){
+    if (messagesToDelete.length > 1) {
+        // takes 2 - 100 messages so call recursively if there is more than 100 passing the undeleted through
+        var endSlice;
+        if (messagesToDelete.length > 100) {
+            endSlice = 100;
+        }
+        else {
+            endSlice = messagesToDelete.length;
+        }
+        bot.deleteMessages({
+            channelID: channelID,
+            messageIDs: messagesToDelete.slice(0, endSlice)
+        }, function(error,response){
+            if (error) {
+                console.log(error);
+                bot.sendMessage({
+                    to: channelID,
+                    message: 'Error encountered when attempting to delete messages.'
+                }, function(error,response){
+                    if (error) {
+                        console.log(error);
+                    }
+                    else {
+                        console.log(response);
+                    }
+                });
+            }
+            else {
+                console.log(response);
+                setTimeout( function() {
+                    deleteMessages(messagesToDelete.slice(endSlice, messagesToDelete.length), channelID);
+                }, 1000); // Delay recusrion call by 1 second to avoid Discord API rate limiting.
+                bot.sendMessage({
+                    to: channelID,
+                    message: 'Messages deleted.'
+                }, function(error,response){
+                    if (error) {
+                        console.log(error);
+                    }
+                    else {
+                        console.log(response);
+                    }
+                });
+            }
+        });
+    }
+    else {
+        bot.deleteMessage({
+            channelID: channelID,
+            messageID: messagesToDelete[0]
+        }, function(error) {
+            if (error) {
+                console.log(error);
+                bot.sendMessage({
+                    to: channelID,
+                    message: 'Error encountered when attempting to delete messages.'
+                }, function(error,response){
+                    if (error) {
+                        console.log(error);
+                    }
+                    else {
+                        console.log(response);
+                    }
+                });
+            }
+            else {
+                bot.sendMessage({
+                    to: channelID,
+                    message: 'Messages deleted.'
+                }, function(error,response){
+                    if (error) {
+                        console.log(error);
+                    }
+                    else {
+                        console.log(response);
+                    }
+                });
+            }
+        });
+    }
+    /*
+    Bulk delete messages using single delete calls parsing an array of message IDs, delayed
+    to mitigate discord API rate limiting.
+    */
+    // console.log(messagesToDelete, channelID);
+    // if (messagesToDelete.length > 0) {
+    //     console.log('Deleting message');
+    //     // console.log(messagesToDelete);
+    //     bot.deleteMessage({
+    //         channelID: channelID,
+    //         messageID: messagesToDelete[0]
+    //     }, function(error) {
+    //         if (error) {
+    //             console.log(error);
+    //         }
+    //     });
+    //     setTimeout( function() {
+    //         deleteMessages(messagesToDelete.slice(1), channelID);
+    //     }, 1000); //Delete 1 message a second to not get blocked by discord
+    // }
 }
 
 function addNewServer(sID){
@@ -234,6 +344,7 @@ bot.on('disconnect', function(msg, code){
 });
 
 bot.on('message', function (user, userID, channelID, message, event) {
+    console.log(event);
     var serverID;
     serverID = bot.channels[channelID].guild_id;
     if (!Object.keys(serversConfig).includes(serverID)) {
@@ -315,46 +426,53 @@ bot.on('message', function (user, userID, channelID, message, event) {
         if (userAccessLevel <= serversConfig[serverID].commandAccessLevels.messageDeletion && commandExecuted === false) {
             switch(cmd) {
                 case 'deleteMessages':
-                    getLastMessagesFrom(userID, channelID, 10, null, null, function(messagesToDelete){
-                        console.log('getLastMessagesFrom callback executing to remove the following messages');
-                        console.log(messagesToDelete);
-                        //TODO must pass at least 2 messages and at max 100...
-                        //TODO can only bulk delete messages that are less than 14 days old...
-                        bot.deleteMessages({
-                            channelID: channelID,
-                            messageIDs: messagesToDelete
-                        }, function(error,response){
-                            if (error) {
-                                console.log(error);
-                                bot.sendMessage({
-                                    to: channelID,
-                                    message: 'Error encountered when attempting to delete messages.'
-                                }, function(error,response){
-                                    if (error) {
-                                        console.log(error);
-                                    }
-                                    else {
-                                        console.log(response);
-                                    }
-                                });
-                            }
-                            else {
-                                console.log(response);
-                                bot.sendMessage({
-                                    to: channelID,
-                                    message: 'Messages deleted.'
-                                }, function(error,response){
-                                    if (error) {
-                                        console.log(error);
-                                    }
-                                    else {
-                                        console.log(response);
-                                    }
-                                });
-                            }
-                        });
+                    console.log('running deleteMessages');
 
-                    });
+                    if (Number.isInteger(Number(args[1])) && 1 <= Number(args[1]) <= 500) {
+                        console.log('Number of messages to delete validated');
+                        getLastMessagesFrom(userID, channelID, args[1], null, null, deleteMessages);
+                    }
+
+                    // getLastMessagesFrom(userID, channelID, 10, null, null, function(messagesToDelete){
+                    //     console.log('getLastMessagesFrom callback executing to remove the following messages');
+                    //     console.log(messagesToDelete);
+                    //     //TODO must pass at least 2 messages and at max 100...
+                    //     //TODO can only bulk delete messages that are less than 14 days old...
+                    //     // bot.deleteMessages({
+                    //     //     channelID: channelID,
+                    //     //     messageIDs: messagesToDelete
+                    //     // }, function(error,response){
+                    //     //     if (error) {
+                    //     //         console.log(error);
+                    //     //         bot.sendMessage({
+                    //     //             to: channelID,
+                    //     //             message: 'Error encountered when attempting to delete messages.'
+                    //     //         }, function(error,response){
+                    //     //             if (error) {
+                    //     //                 console.log(error);
+                    //     //             }
+                    //     //             else {
+                    //     //                 console.log(response);
+                    //     //             }
+                    //     //         });
+                    //     //     }
+                    //     //     else {
+                    //     //         console.log(response);
+                    //     //         bot.sendMessage({
+                    //     //             to: channelID,
+                    //     //             message: 'Messages deleted.'
+                    //     //         }, function(error,response){
+                    //     //             if (error) {
+                    //     //                 console.log(error);
+                    //     //             }
+                    //     //             else {
+                    //     //                 console.log(response);
+                    //     //             }
+                    //     //         });
+                    //     //     }
+                    //     // });
+                    //
+                    // });
                     console.log('execution after function call resumed.');
                     commandExecuted = true;
                     break;
@@ -378,6 +496,32 @@ bot.on('message', function (user, userID, channelID, message, event) {
                     bot.sendMessage({
                         to: channelID,
                         message: 'Pong!'
+                    });
+                    bot.getMessages({
+                        channelID: channelID,
+                        limit: 1
+                    }, function(error, messageArray) {
+                        if (error) {
+                            console.log(error);
+                        }
+                        else {
+                            // console.log(messageArray);
+                            // console.log(messageArray[0].id);
+                            bot.addReaction({
+                                channelID: channelID,
+                                messageID: messageArray[0].id,
+                                // reaction: "🍰"
+                                // https://emojipedia.org/ok-hand-sign/
+                                reaction: "👌"
+                            }, function(error, response) {
+                                if (error) {
+                                    console.log(error);
+                                }
+                                else {
+                                    console.log(response);
+                                }
+                            });
+                        }
                     });
                     commandExecuted = true;
                     break;
