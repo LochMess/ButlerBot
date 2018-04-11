@@ -26,5 +26,10 @@
     },
     "roleDeletion": {
         "deleteRole": "Use: !deleteRole <tag role here>\nDescription: Delete a role."
+    },
+    "moderation": {
+        "deleteUserMessages": "Use: !deleteUserMessages <tag user here> <integer from 1 to 500>\nDescription: Deletes the number of messages given sent by the user given in the current channel, provided the messages are less than 14 days old.",
+        "addUserTo": "Use: !addUserTo <tag user here> <tag role here>\nDescription: Adds the given user to the given role.",
+        "removeUserFrom": "Use: !removeUserFrom <tag user here> <tag role here>\nDescription: Removes the user from the given role."
     }
 }
