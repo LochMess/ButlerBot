@@ -30,6 +30,15 @@ function getRoleString(s) {
     return s.substring(s.indexOf('&')+1,s.indexOf('>'));
 }
 
+function getUserString(s) {
+    if (s.indexOf('!') === 2) {
+        return s.substring(s.indexOf('!')+1,s.indexOf('>'));
+    }
+    else {
+        return s.substring(s.indexOf('@')+1,s.indexOf('>'));
+    }
+}
+
 function isPrivilegedRole(rID, sID) {
     for (var group of Object.keys(serversConfig[sID].privilegeRoles)) {
         if (serversConfig[sID].privilegeRoles[group].roles.includes(rID)) {
@@ -37,6 +46,29 @@ function isPrivilegedRole(rID, sID) {
         }
     }
     return false;
+}
+
+function isRoleID(rID) {
+    if (rID.length === 22 && rID.indexOf('<') === 0 && rID.indexOf('@') === 1 && rID.indexOf('&') === 2 && rID.indexOf('>') === 21 && !isNaN(Number(rID.substring(3,21)))) {
+        return true
+    }
+    else {
+        return false
+    }
+}
+
+function isUserID(uID) {
+    // Users with a nickname will have IDs of the form <@!numbers> users without nicknames do not have the !
+    var offSet = 0;
+    if (uID.indexOf('!') === 2) {
+        offSet = 1;
+    }
+    if (uID.length === 21+offSet && uID.indexOf('<') === 0 && uID.indexOf('@') === 1 && uID.indexOf('>') === 20+offSet && !isNaN(Number(uID.substring(3,20+offSet)))) {
+        return true
+    }
+    else {
+        return false
+    }
 }
 
 function getAllServerRolesIds(sID){
@@ -347,6 +379,7 @@ bot.on('disconnect', function(msg, code){
 
 bot.on('message', function (user, userID, channelID, message, event) {
     console.log(event);
+    console.log(userID);
     var serverID;
     serverID = bot.channels[channelID].guild_id;
     if (!Object.keys(serversConfig).includes(serverID)) {
@@ -382,7 +415,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                     args.forEach(function(item, index){
                         if (Object.keys(serversConfig[serverID].privilegeRoles).includes(item) && args[index+1] != undefined) {
                             for (var i = index+1; i < args.length; i++) {
-                                if (args[i].length === 22 && args[i].indexOf('<') === 0 && args[i].indexOf('@') === 1 && args[i].indexOf('&') === 2 && args[i].indexOf('>') === 21 && 0 <= Number(args[i].substring(3,21)) <= 999999999999999999) {
+                                if (isRoleID(args[i])) {
                                     if (serversConfig[serverID].privilegeRoles[item].roles.includes(getRoleString(args[i])) && remove === true) {
                                         if (remove) {
                                             var indexToRemove = serversConfig[serverID].privilegeRoles[item].roles.indexOf(getRoleString(args[i]));
@@ -425,63 +458,81 @@ bot.on('message', function (user, userID, channelID, message, event) {
                     break;
             }
         }
-        if (userAccessLevel <= serversConfig[serverID].commandAccessLevels.messageDeletion && commandExecuted === false) {
+        if (userAccessLevel <= serversConfig[serverID].commandAccessLevels.moderation && commandExecuted === false) {
             switch(cmd) {
-                case 'deleteMessages':
-                    console.log('running deleteMessages');
-
-                    if (Number.isInteger(Number(args[1])) && 1 <= Number(args[1]) <= 500) {
-                        console.log('Number of messages to delete validated');
-                        getLastMessagesFrom(userID, channelID, args[1], null, null, deleteMessages);
+                case 'deleteUserMessages':
+                    if (isUserID(args[1])) {
+                        if (userAccessLevel < getUserAccessLevel(getUserString(args[1]), serverID) && Number.isInteger(Number(args[2])) && 1 <= Number(args[2]) <= 500) {
+                            console.log('Number of messages to delete validated');
+                            getLastMessagesFrom(getUserString(args[1]), channelID, args[2], null, null, deleteMessages);
+                        }
+                    }
+                    commandExecuted = true;
+                    break;
+                case 'addUserTo':
+                    console.log('addUserTo');
+                    console.log(args[1], isUserID(args[1]), args[2], isRoleID(args[2]));
+                    if (isUserID(args[1]) && isRoleID(args[2])) {
+                        console.log('passed user id and role id');
+                        if (isPrivilegedRole(getRoleString(args[2]), serverID) === false && userAccessLevel < getUserAccessLevel(getUserString(args[1]), serverID)) {
+                            console.log('sending add request');
+                            bot.addToRole({
+                                serverID: serverID,
+                                userID: getUserString(args[1]),
+                                roleID: getRoleString(args[2])
+                            }, function(error,response){
+                                console.log('!join error');
+                                console.log(error);
+                                if (error === null) {
+                                    bot.sendMessage({
+                                        to: channelID,
+                                        message: 'Congratulations <@'+getUserString(args[1])+'> you\'ve been added to @'+bot.servers[serverID].roles[getRoleString(args[2])].name
+                                    });
+                                }
+                                console.log('!join response');
+                                console.log(response);
+                            });
+                        }
                     }
 
-                    // getLastMessagesFrom(userID, channelID, 10, null, null, function(messagesToDelete){
-                    //     console.log('getLastMessagesFrom callback executing to remove the following messages');
-                    //     console.log(messagesToDelete);
-                    //     //TODO must pass at least 2 messages and at max 100...
-                    //     //TODO can only bulk delete messages that are less than 14 days old...
-                    //     // bot.deleteMessages({
-                    //     //     channelID: channelID,
-                    //     //     messageIDs: messagesToDelete
-                    //     // }, function(error,response){
-                    //     //     if (error) {
-                    //     //         console.log(error);
-                    //     //         bot.sendMessage({
-                    //     //             to: channelID,
-                    //     //             message: 'Error encountered when attempting to delete messages.'
-                    //     //         }, function(error,response){
-                    //     //             if (error) {
-                    //     //                 console.log(error);
-                    //     //             }
-                    //     //             else {
-                    //     //                 console.log(response);
-                    //     //             }
-                    //     //         });
-                    //     //     }
-                    //     //     else {
-                    //     //         console.log(response);
-                    //     //         bot.sendMessage({
-                    //     //             to: channelID,
-                    //     //             message: 'Messages deleted.'
-                    //     //         }, function(error,response){
-                    //     //             if (error) {
-                    //     //                 console.log(error);
-                    //     //             }
-                    //     //             else {
-                    //     //                 console.log(response);
-                    //     //             }
-                    //     //         });
-                    //     //     }
-                    //     // });
-                    //
-                    // });
-                    console.log('execution after function call resumed.');
+                    commandExecuted = true;
+                    break;
+                case 'removeUserFrom':
+                    console.log('addUserTo');
+                    console.log(args[1], isUserID(args[1]), args[2], isRoleID(args[2]));
+                    if (isUserID(args[1]) && isRoleID(args[2])) {
+                        console.log('passed user id and role id');
+                        if (isPrivilegedRole(getRoleString(args[2]), serverID) === false && userAccessLevel < getUserAccessLevel(getUserString(args[1]), serverID)) {
+                            console.log('sending add request');
+                            bot.removeFromRole({
+                                serverID: serverID,
+                                userID: getUserString(args[1]),
+                                roleID: getRoleString(args[2])
+                            }, function(error,response){
+                                console.log('!join error');
+                                console.log(error);
+                                if (error === null) {
+                                    bot.sendMessage({
+                                        to: channelID,
+                                        message: 'Congratulations <@'+getUserString(args[1])+'> you\'ve been removed from @'+bot.servers[serverID].roles[getRoleString(args[2])].name
+                                    });
+                                }
+                                console.log('!leave response');
+                                console.log(response);
+                            });
+                        }
+                    }
                     commandExecuted = true;
                     break;
             }
         }
         if (userAccessLevel <= serversConfig[serverID].commandAccessLevels.debug && commandExecuted === false) {
             switch(cmd) {
+                case 'test':
+                    console.log(0 <= Number('123456') <= 999999999999999999, Number('123456'));
+                    console.log(!isNaN(Number('123456')), Number('123456'));
+                    commandExecuted = true;
+                    break;
                 case 'sfull':
                     console.log(bot.servers[serverID]);
                     commandExecuted = true;
@@ -567,6 +618,57 @@ bot.on('message', function (user, userID, channelID, message, event) {
                         to: channelID,
                         message: helpMessage
                     });
+                    commandExecuted = true;
+                    break;
+                case 'deleteMessages':
+                    console.log('running deleteMessages');
+
+                    if (Number.isInteger(Number(args[1])) && 1 <= Number(args[1]) <= 500) {
+                        console.log('Number of messages to delete validated');
+                        getLastMessagesFrom(userID, channelID, args[1], null, null, deleteMessages);
+                    }
+
+                    // getLastMessagesFrom(userID, channelID, 10, null, null, function(messagesToDelete){
+                    //     console.log('getLastMessagesFrom callback executing to remove the following messages');
+                    //     console.log(messagesToDelete);
+                    //     //TODO must pass at least 2 messages and at max 100...
+                    //     //TODO can only bulk delete messages that are less than 14 days old...
+                    //     // bot.deleteMessages({
+                    //     //     channelID: channelID,
+                    //     //     messageIDs: messagesToDelete
+                    //     // }, function(error,response){
+                    //     //     if (error) {
+                    //     //         console.log(error);
+                    //     //         bot.sendMessage({
+                    //     //             to: channelID,
+                    //     //             message: 'Error encountered when attempting to delete messages.'
+                    //     //         }, function(error,response){
+                    //     //             if (error) {
+                    //     //                 console.log(error);
+                    //     //             }
+                    //     //             else {
+                    //     //                 console.log(response);
+                    //     //             }
+                    //     //         });
+                    //     //     }
+                    //     //     else {
+                    //     //         console.log(response);
+                    //     //         bot.sendMessage({
+                    //     //             to: channelID,
+                    //     //             message: 'Messages deleted.'
+                    //     //         }, function(error,response){
+                    //     //             if (error) {
+                    //     //                 console.log(error);
+                    //     //             }
+                    //     //             else {
+                    //     //                 console.log(response);
+                    //     //             }
+                    //     //         });
+                    //     //     }
+                    //     // });
+                    //
+                    // });
+                    console.log('execution after function call resumed.');
                     commandExecuted = true;
                     break;
             }
