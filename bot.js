@@ -28,11 +28,12 @@ bot.on('ready', function (evt) {
 
 function log(options) {
     if (options.error) {
-        console.log('Error (log):\n',options.error);
+        console.log('Error (log):\n', options.error);
         return false;
     }
     if (options.response) {
-        console.log('Response (log):\n',options.response);
+        console.log('Response (log):\n', options.response);
+        console.log('(log) returning true');
         return true;
     }
 }
@@ -264,9 +265,16 @@ function deleteMessages(options) {
         bot.deleteMessages({
             channelID: options.channelID,
             messageIDs: options.messagesToDelete.slice(0, endSlice)
-        }, function(error,response){
-            if (log({error: error, response: response})) {
-                // console.log(response);
+        }, function(error){
+            if (log({error: error}) === false) {
+                bot.sendMessage({
+                    to: options.channelID,
+                    message: 'Error encountered when attempting to delete messages. Bulk delete API'
+                }, function(error,response){
+                    log({error: error, response: response});
+                });
+            }
+            else {
                 if (endSlice != options.messagesToDelete.length) {
                     setTimeout( function() {
                         deleteMessages(options.messagesToDelete.slice(endSlice, options.messagesToDelete.length), channelID);
@@ -288,15 +296,6 @@ function deleteMessages(options) {
                         log({error: error, response: response});
                     });
                 }
-            }
-            else {
-                // console.log(error);
-                bot.sendMessage({
-                    to: options.channelID,
-                    message: 'Error encountered when attempting to delete messages. Bulk delete API'
-                }, function(error,response){
-                    log({error: error, response: response});
-                });
             }
         });
     }
