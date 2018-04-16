@@ -5,9 +5,38 @@ var help = require('./help.json');
 var auth = require('./auth.json');
 var serversConfig;
 
+function configSaveReload () {
+    console.log('configSaveRelod firing');
+    console.log(serversConfig);
+    fs.writeFile('./servers.json', JSON.stringify(serversConfig, null, 4), function(error){
+        if (error) throw error;
+        console.log('config Saved, now reloading');
+        console.log(JSON.parse(fs.readFileSync('./servers.json', 'utf8')));
+        return JSON.parse(fs.readFileSync('./servers.json', 'utf8'));
+    });
+}
+
 //TODO add new permissions to existing config files.
 if (fs.existsSync('./servers.json')) {
     serversConfig = require('./servers.json');
+    // console.log(serversConfig);
+    for (var key in serversConfig) {
+        if (serversConfig[key].commandAccessLevels.moderation === undefined) {
+            console.log('Moderation does not exist and needs to be added.');
+            serversConfig[key].commandAccessLevels.moderation = 0;
+            // SAVE FILE
+
+        }
+        console.log(serversConfig[key]);
+
+    }
+    console.log(serversConfig);
+    serversConfig = configSaveReload();
+    console.log(serversConfig);
+    console.log('after config has been saved and reloaded');
+    // serversConfig.forEach(function(item, index, array) {
+    //     console.log(serversConfig[index]);
+    // });
 }
 else {
     fs.appendFile('./servers.json', '{}', function(error){
@@ -353,7 +382,8 @@ function addNewServer(sID){
                                 "roleQuery": 0,
                                 "roleChange": 0,
                                 "roleCreation": 0,
-                                "roleDeletion": 0
+                                "roleDeletion": 0,
+                                "moderation": 0
                             }
                         }
                     };
