@@ -252,7 +252,6 @@ function reactOk (channelID) {
 function getLastMessagesFrom(options, callback) {
     var numberOfMessagesToRetrieve = 50; // Default 50, limit 100, needs to be more than 1 for function to work.
     options.messageIDs = options.messageIDs || [];
-    // console.log('victim', options.victim, 'channelID', options.channelID, 'numberOfMessages', options.numberOfMessages, 'messageIDs', options.messageIDs, 'lastMessageID', options.lastMessageID);
 
     bot.getMessages({
         channelID: options.channelID,
@@ -320,7 +319,7 @@ function deleteMessages(options) {
                         to: options.victim,
                         message: 'Messages you sent in channel <#'+options.channelID+'> have been deleted by <@'+options.instigator+'>.'
                     }, function(error,response){
-                        log({error: error, response: response});
+                        if (log({error: error, response: response})) reactOk(options.channelID);
                     });
                 }
                 else {
@@ -353,7 +352,7 @@ function deleteMessages(options) {
                         to: options.victim,
                         message: 'Messages you sent in channel <#'+options.channelID+'> have been deleted by <@'+options.instigator+'>.'
                     }, function(error,response){
-                        log({error: error, response: response});
+                        if (log({error: error, response: response})) reactOk(options.channelID);
                     });
                 }
                 else {
@@ -513,16 +512,12 @@ bot.on('message', function (user, userID, channelID, message, event) {
                                     userID: getUserString(args[1]),
                                     roleID: getRoleString(args[2])
                                 }, function(error,response){
-                                    // console.log('!join error');
-                                    // console.log(error);
                                     if (log({error: error, response: response})) {
                                         bot.sendMessage({
                                             to: channelID,
                                             message: 'Congratulations <@'+getUserString(args[1])+'> you\'ve been added to @'+bot.servers[serverID].roles[getRoleString(args[2])].name
                                         });
                                     }
-                                    // console.log('!join response');
-                                    // console.log(response);
                                 });
                             }
                         }
@@ -540,16 +535,12 @@ bot.on('message', function (user, userID, channelID, message, event) {
                                     userID: getUserString(args[1]),
                                     roleID: getRoleString(args[2])
                                 }, function(error,response){
-                                    // console.log('!join error');
-                                    // console.log(error);
                                     if (log({error: error, response: response})) {
                                         bot.sendMessage({
                                             to: channelID,
                                             message: 'Congratulations <@'+getUserString(args[1])+'> you\'ve been removed from @'+bot.servers[serverID].roles[getRoleString(args[2])].name
                                         });
                                     }
-                                    // console.log('!leave response');
-                                    // console.log(response);
                                 });
                             }
                         }
@@ -690,17 +681,12 @@ bot.on('message', function (user, userID, channelID, message, event) {
                                     userID: userID,
                                     roleID: roleId
                                 }, function(error,response){
-                                    // console.log('!join error');
-                                    // console.log(error);
-                                    // if (error === null) {
                                     if (log({error: error, response: response})) {
                                         bot.sendMessage({
                                             to: channelID,
                                             message: 'Congratulations <@'+userID+'> you\'ve been added to @'+bot.servers[serverID].roles[roleId].name
                                         });
                                     }
-                                    // console.log('!join response');
-                                    // console.log(response);
                                 });
                             }
                         }
@@ -716,8 +702,6 @@ bot.on('message', function (user, userID, channelID, message, event) {
                                     userID: userID,
                                     roleID: roleId
                                 }, function(error,response){
-                                    // console.log('!leave error');
-                                    // console.log(error);
                                     if (log({error: error, response: response})) {
                                         bot.sendMessage({
                                             to: channelID,
@@ -725,8 +709,6 @@ bot.on('message', function (user, userID, channelID, message, event) {
                                             message: 'Congratulations <@'+userID+'> you\'ve left @'+bot.servers[serverID].roles[roleId].name
                                         });
                                     }
-                                    // console.log('!leave response');
-                                    // console.log(response);
                                 });
                             }
                         }
@@ -743,11 +725,6 @@ bot.on('message', function (user, userID, channelID, message, event) {
                         if (!(getAllServerRoles(serverID).map(role => role.name).includes(name)) && !(getAllServerRoles(serverID).map(role => role.color).includes(colorDec))) {
                             bot.createRole(serverID, function(error, response){
                                 if (log({error: error, response: response})) {
-                                // if (error) {
-                                //     console.log(error);
-                                // }
-                                // else {
-                                //     console.log(response);
                                     bot.editRole({
                                         serverID: serverID,
                                         roleID: response.id,
@@ -755,11 +732,6 @@ bot.on('message', function (user, userID, channelID, message, event) {
                                         mentionable: true,
                                         color: color
                                     }, function(error, response){
-                                        // if (error) {
-                                        //     console.log(error);
-                                        // }
-                                        // else {
-                                        //     console.log(response);
                                         if (log({error: error, response: response})) {
                                             bot.sendMessage({
                                                 to: channelID,
@@ -789,11 +761,6 @@ bot.on('message', function (user, userID, channelID, message, event) {
                                 serverID: serverID,
                                 roleID: getRoleString(args[1])
                             }, function(error, response){
-                                // if (error) {
-                                //     console.log(error);
-                                // }
-                                // else {
-                                //     console.log(response);
                                 if (log({error: error, response: response})) {
                                     bot.sendMessage({
                                         to: channelID,
