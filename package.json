@@ -1,6 +1,6 @@
 {
   "name": "butler.discord.bot",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Role management and stuff.",
   "main": "bot.js",
   "author": "LochMess",
