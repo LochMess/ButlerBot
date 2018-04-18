@@ -6,37 +6,25 @@ var auth = require('./auth.json');
 var serversConfig;
 
 function configSaveReload () {
-    console.log('configSaveRelod firing');
-    console.log(serversConfig);
     fs.writeFile('./servers.json', JSON.stringify(serversConfig, null, 4), function(error){
         if (error) throw error;
-        console.log('config Saved, now reloading');
-        console.log(JSON.parse(fs.readFileSync('./servers.json', 'utf8')));
-        return JSON.parse(fs.readFileSync('./servers.json', 'utf8'));
+        serversConfig = JSON.parse(fs.readFileSync('./servers.json', 'utf8'));
     });
 }
 
-//TODO add new permissions to existing config files.
-if (fs.existsSync('./servers.json')) {
-    serversConfig = require('./servers.json');
-    // console.log(serversConfig);
+function migrateServerConfig (callback) {
     for (var key in serversConfig) {
         if (serversConfig[key].commandAccessLevels.moderation === undefined) {
             console.log('Moderation does not exist and needs to be added.');
             serversConfig[key].commandAccessLevels.moderation = 0;
-            // SAVE FILE
-
         }
-        console.log(serversConfig[key]);
-
     }
-    console.log(serversConfig);
-    serversConfig = configSaveReload();
-    console.log(serversConfig);
-    console.log('after config has been saved and reloaded');
-    // serversConfig.forEach(function(item, index, array) {
-    //     console.log(serversConfig[index]);
-    // });
+    callback();
+}
+
+if (fs.existsSync('./servers.json')) {
+    serversConfig = require('./servers.json');
+    migrateServerConfig(configSaveReload);
 }
 else {
     fs.appendFile('./servers.json', '{}', function(error){
@@ -230,6 +218,24 @@ function getHelpCommandDescription(hCmd, uAL, sID){
         }
     }
     return 'That is not a command.';
+}
+
+function reactOk (channelID) {
+    bot.getMessages({
+        channelID: channelID,
+        limit: 1
+    }, function(error, messageArray) {
+        if (log({error: error, response: messageArray})) {
+            bot.addReaction({
+                channelID: channelID,
+                messageID: messageArray[0].id,
+                // Get reaction emojis from https://emojipedia.org/ok-hand-sign/
+                reaction: "👌"
+            }, function(error, response) {
+                log({error: error, response: response});
+            });
+        }
+    });
 }
 
 /**
@@ -575,34 +581,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                             to: channelID,
                             message: 'Pong!'
                         });
-                        bot.getMessages({
-                            channelID: channelID,
-                            limit: 1
-                        }, function(error, messageArray) {
-                            if (log({error: error, response: messageArray})) {
-                            // if (error) {
-                            //     console.log(error);
-                            // }
-                            // else {
-                                // console.log(messageArray);
-                                // console.log(messageArray[0].id);
-                                bot.addReaction({
-                                    channelID: channelID,
-                                    messageID: messageArray[0].id,
-                                    // reaction: "🍰"
-                                    // https://emojipedia.org/ok-hand-sign/
-                                    reaction: "👌"
-                                }, function(error, response) {
-                                    log({error: error, response: response});
-                                    // if (error) {
-                                    //     console.log(error);
-                                    // }
-                                    // else {
-                                    //     console.log(response);
-                                    // }
-                                });
-                            }
-                        });
+                        reactOk(channelID);
                         commandExecuted = true;
                         break;
                     case 'lookbusy':
