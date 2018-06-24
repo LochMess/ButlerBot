@@ -43,6 +43,7 @@ var botCreateRole;
 var botEditRole;
 var botDeleteRole;
 var botRemoveFromRole;
+var botAddReaction;
 
 var bot = new Discord.Client({
    token: auth.token,
@@ -62,6 +63,7 @@ bot.on('ready', function (evt) {
     botEditRole = util.promisify(bot.editRole).bind(bot);
     botDeleteRole = util.promisify(bot.deleteRole).bind(bot);
     botRemoveFromRole = util.promisify(bot.removeFromRole).bind(bot);
+    botAddReaction = util.promisify(bot.addReaction).bind(bot);
 });
 
 function test() {
@@ -90,6 +92,23 @@ function log(options) {
         console.log('Response (log):\n', options.response);
         console.log('(log) returning true');
         return true;
+    }
+}
+/**
+ * @description Logs error and responses returned in callbacks from interactions with the api, returns true for responses and false for errors.
+ *
+ * @param {String} options.error The error returned.
+ * @param {String} options.eventID The ID of the event that triggered the bot.
+ * @param {String} options.channelID The ID of the channel the response is from.
+ */
+function errorLog(options) {
+    if (options.error) {
+        console.log('Error (errorLog):\n', options.error);
+        bot.sendMessage({
+            to: options.channelID,
+            message: `Response Error: ${options.error}\nName: ${options.error.name}\nStatus Code: ${options.error.statusCode}\nStatus Message: ${options.error.statusMessage}\nResponse: { code: ${options.error.response.code}, message: ${options.error.response.message} }`
+        });
+        react({channelID: options.channelID, messageID: options.eventID, reaction: '-1'});
     }
 }
 
@@ -281,20 +300,6 @@ function react(options) {
         // log({error: error, response: response});
         if (error) console.log(error);
     });
-    // bot.getMessages({
-    //     channelID: channelID,
-    //     limit: 1
-    // }, function(error, messageArray) {
-        // if (log({error: error, response: messageArray})) {
-            // bot.addReaction({
-            //     channelID: options.channelID,
-            //     messageID: options.messageID,
-            //     reaction: reactions[options.reaction]
-            // }, function(error, response) {
-            //     log({error: error, response: response});
-            // });
-    //     }
-    // });
 }
 
 /**
@@ -309,6 +314,7 @@ function react(options) {
  * @param {function(Array<String>, String):undefined} callback Calls a function giving it the array of messages compiled and the channel ID of where they are from.
  */
 function getLastMessagesFrom(options, callback) {
+//TODO Promisify
     var numberOfMessagesToRetrieve = 50; // Default 50, limit 100, needs to be more than 1 for function to work.
     options.messageIDs = options.messageIDs || [];
 
@@ -349,6 +355,7 @@ function getLastMessagesFrom(options, callback) {
  * @param {String} options.reactID The ID of the message to react to.
  */
 function deleteMessages(options) {
+//TODO Promisify
     if (options.messagesToDelete.length > 1) {
         // takes 2 - 100 messages so call recursively if there is more than 100 passing the undeleted through
         var endSlice;
@@ -547,7 +554,8 @@ bot.on('message', function (user, userID, channelID, message, event) {
                         }).then( function(response) {
                             react({channelID:channelID, messageID: eventID, reaction: '+1'});
                         }).catch( function(error) {
-                            react({channelID:channelID, messageID: eventID, reaction: '-1'});
+                            errorLog({error: error, channelID: channelID, eventID: eventID});
+                            // react({channelID:channelID, messageID: eventID, reaction: '-1'});
                         });
                         commandExecuted = true;
                         break;
@@ -586,8 +594,9 @@ bot.on('message', function (user, userID, channelID, message, event) {
                                     console.log(response);
                                     react({channelID:channelID, messageID: eventID, reaction: '+1'});
                                 }).catch( function(error) {
-                                    console.log(error);
-                                    react({channelID:channelID, messageID: eventID, reaction: '-1'});
+                                    errorLog({error: error, channelID: channelID, eventID: eventID});
+                                    // console.log(error);
+                                    // react({channelID:channelID, messageID: eventID, reaction: '-1'});
                                 });
                             }
                         }
@@ -614,8 +623,9 @@ bot.on('message', function (user, userID, channelID, message, event) {
                                     console.log(response);
                                     react({channelID:channelID, messageID: eventID, reaction: '+1'});
                                 }).catch( function(error) {
-                                    console.log(error);
-                                    react({channelID:channelID, messageID: eventID, reaction: '-1'});
+                                    errorLog({error: error, channelID: channelID, eventID: eventID});
+                                    // console.log(error);
+                                    // react({channelID:channelID, messageID: eventID, reaction: '-1'});
                                 });
                             }
                         }
@@ -705,8 +715,9 @@ bot.on('message', function (user, userID, channelID, message, event) {
                                 });
                             }).catch( function(error) {
                                 console.log('here 2');
-                                console.log(error);
-                                react({channelID:channelID, messageID: eventID, reaction: '-1'});
+                                errorLog({error: error, channelID: channelID, eventID: eventID});
+                                // console.log(error);
+                                // react({channelID:channelID, messageID: eventID, reaction: '-1'});
                             });
                         }
                         console.log('here 3');
@@ -737,8 +748,9 @@ bot.on('message', function (user, userID, channelID, message, event) {
 
                         }).catch( function(error) {
                             console.log('here 2');
-                            console.log(error);
-                            react({channelID: channelID, messageID: eventID, reaction: '-1'});
+                            errorLog({error: error, channelID: channelID, eventID: eventID});
+                            // console.log(error);
+                            // react({channelID: channelID, messageID: eventID, reaction: '-1'});
                         });
                         commandExecuted = true;
                         break;
@@ -754,8 +766,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                             react({channelID:channelID, messageID: eventID, reaction: '+1'});
                             console.log(response);
                         }).catch( function(error) {
-                            react({channelID:channelID, messageID: eventID, reaction: '-1'});
-                            console.log(error);
+                            errorLog({error: error, channelID: channelID, eventID: eventID});
                         });
                         commandExecuted = true;
                         break;
@@ -766,8 +777,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                             react({channelID:channelID, messageID: eventID, reaction: '+1'});
                             console.log(response);
                         }).catch( function(error) {
-                            react({channelID:channelID, messageID: eventID, reaction: '-1'});
-                            console.log(error);
+                            errorLog({error: error, channelID: channelID, eventID: eventID});
                         });
                         commandExecuted = true;
                         break;
@@ -780,8 +790,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                                 react({channelID:channelID, messageID: eventID, reaction: '+1'});
                                 console.log(response);
                             }).catch( function(error) {
-                                react({channelID:channelID, messageID: eventID, reaction: '-1'});
-                                console.log(error);
+                                errorLog({error: error, channelID: channelID, eventID: eventID});
                             });
                         }
                         commandExecuted = true;
@@ -794,8 +803,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                             react({channelID:channelID, messageID: eventID, reaction: '+1'});
                             console.log(response);
                         }).catch( function(error) {
-                            react({channelID:channelID, messageID: eventID, reaction: '-1'});
-                            console.log(error);
+                            errorLog({error: error, channelID: channelID, eventID: eventID});
                         });
                         commandExecuted = true;
                         break;
@@ -820,8 +828,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                             react({channelID:channelID, messageID: eventID, reaction: '+1'});
                             console.log(response);
                         }).catch( function(error) {
-                            react({channelID:channelID, messageID: eventID, reaction: '-1'});
-                            console.log(error);
+                            errorLog({error: error, channelID: channelID, eventID: eventID});
                         });
                         commandExecuted = true;
                         break;
@@ -849,8 +856,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                             react({channelID:channelID, messageID: eventID, reaction: '+1'});
                             console.log(response);
                         }).catch( function(error) {
-                            react({channelID:channelID, messageID: eventID, reaction: '-1'});
-                            console.log(error);
+                            errorLog({error: error, channelID: channelID, eventID: eventID});
                         });
                         commandExecuted = true;
                         break;
@@ -863,8 +869,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                             react({channelID:channelID, messageID: eventID, reaction: '+1'});
                             console.log(response);
                         }).catch( function(error) {
-                            react({channelID:channelID, messageID: eventID, reaction: '-1'});
-                            console.log(error);
+                            errorLog({error: error, channelID: channelID, eventID: eventID});
                         });
                         commandExecuted = true;
                         break;
@@ -889,8 +894,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                             react({channelID:channelID, messageID: eventID, reaction: '+1'});
                             console.log(response);
                         }).catch( function(error) {
-                            react({channelID:channelID, messageID: eventID, reaction: '-1'});
-                            console.log(error);
+                            errorLog({error: error, channelID: channelID, eventID: eventID});
                         });
                         commandExecuted = true;
                         break;
@@ -917,8 +921,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                                     react({channelID:channelID, messageID: eventID, reaction: '+1'});
                                     console.log(response)
                                 }).catch( function(error) {
-                                    react({channelID:channelID, messageID: eventID, reaction: '-1'});
-                                    console.log(error);
+                                    errorLog({error: error, channelID: channelID, eventID: eventID});
                                 });
                             }
                         }
@@ -944,8 +947,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                                     react({channelID:channelID, messageID: eventID, reaction: '+1'});
                                     console.log(response);
                                 }).catch( function(error) {
-                                    react({channelID:channelID, messageID: eventID, reaction: '-1'});
-                                    console.log(error);
+                                    errorLog({error: error, channelID: channelID, eventID: eventID});
                                 });
                             }
                         }
@@ -980,8 +982,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                                 console.log(response);
                                 react({channelID:channelID, messageID: eventID, reaction: '+1'});
                             }).catch( function(error) {
-                                console.log(error);
-                                react({channelID:channelID, messageID: eventID, reaction: '-1'});
+                                errorLog({error: error, channelID: channelID, eventID: eventID});
                             });
                         }
                         else {
@@ -992,8 +993,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                                 console.log(response);
                                 react({channelID:channelID, messageID: eventID, reaction: '+1'});
                             }).catch( function(error) {
-                                console.log(error);
-                                react({channelID:channelID, messageID: eventID, reaction: '-1'});
+                                errorLog({error: error, channelID: channelID, eventID: eventID});
                             });
                         }
                         commandExecuted = true;
@@ -1018,8 +1018,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                                 console.log(response);
                                 react({channelID:channelID, messageID: eventID, reaction: '+1'});
                             }).catch( function(error) {
-                                console.log(error);
-                                react({channelID:channelID, messageID: eventID, reaction: '-1'});
+                                errorLog({error: error, channelID: channelID, eventID: eventID});
                             });
                         }
                         commandExecuted = true;
@@ -1034,8 +1033,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                     console.log(response);
                     react({channelID:channelID, messageID: eventID, reaction: '+1'});
                 }).catch( function(error) {
-                    console.log(error);
-                    react({channelID:channelID, messageID: eventID, reaction: '-1'});
+                    errorLog({error: error, channelID: channelID, eventID: eventID});
                 });
             }
         }
