@@ -1,5 +1,6 @@
 var Discord = require('discord.io');
 var fs = require('fs');
+const util = require('util');
 var help = require('./help.json');
 
 var auth = require('./auth.json');
@@ -33,6 +34,17 @@ else {
     });
 }
 
+var botSendMessage;
+var botGetMessages;
+var botSimulateTyping;
+var botAddToRole;
+var botRemoveFromRole;
+var botCreateRole;
+var botEditRole;
+var botDeleteRole;
+var botRemoveFromRole;
+var botAddReaction;
+
 var bot = new Discord.Client({
    token: auth.token,
    autorun: true
@@ -41,17 +53,62 @@ bot.on('ready', function (evt) {
     console.log('Connected');
     console.log('Logged in as: ');
     console.log(bot.username + ' - (' + bot.id + ')');
+    // Promisify discord io helper functions
+    botSendMessage = util.promisify(bot.sendMessage).bind(bot);
+    botGetMessages = util.promisify(bot.getMessages).bind(bot);
+    botSimulateTyping = util.promisify(bot.simulateTyping).bind(bot);
+    botAddToRole = util.promisify(bot.addToRole).bind(bot);
+    botRemoveFromRole = util.promisify(bot.removeFromRole).bind(bot);
+    botCreateRole = util.promisify(bot.createRole).bind(bot);
+    botEditRole = util.promisify(bot.editRole).bind(bot);
+    botDeleteRole = util.promisify(bot.deleteRole).bind(bot);
+    botRemoveFromRole = util.promisify(bot.removeFromRole).bind(bot);
+    botAddReaction = util.promisify(bot.addReaction).bind(bot);
 });
 
+function test() {
+    console.log('THE test function firing');
+}
+
+/**
+ * @description Logs error and responses returned in callbacks from interactions with the api, returns true for responses and false for errors.
+ *
+ * @param {String} options.error The error returned.
+ * @param {String} options.response The response returned.
+ * @param {String} options.channelID The ID of the channel the response is from.
+ */
 function log(options) {
+//TODO fix the error parsing
     if (options.error) {
         console.log('Error (log):\n', options.error);
-        return false;
+        bot.sendMessage({
+            to: options.channelID,
+            message: `statusCode: ${options.error.statusCode} statusMessage: ${options.error.statusMessage} response: ${options.error.response}`
+        }, function(err,res){
+            if (log({error: err, response: res})) return false;
+        });
     }
     if (options.response) {
         console.log('Response (log):\n', options.response);
         console.log('(log) returning true');
         return true;
+    }
+}
+/**
+ * @description Logs error and responses returned in callbacks from interactions with the api, returns true for responses and false for errors.
+ *
+ * @param {String} options.error The error returned.
+ * @param {String} options.eventID The ID of the event that triggered the bot.
+ * @param {String} options.channelID The ID of the channel the response is from.
+ */
+function errorLog(options) {
+    if (options.error) {
+        console.log('Error (errorLog):\n', options.error);
+        bot.sendMessage({
+            to: options.channelID,
+            message: `Response Error: ${options.error}\nName: ${options.error.name}\nStatus Code: ${options.error.statusCode}\nStatus Message: ${options.error.statusMessage}\nResponse: { code: ${options.error.response.code}, message: ${options.error.response.message} }`
+        });
+        react({channelID: options.channelID, messageID: options.eventID, reaction: '-1'});
     }
 }
 
@@ -220,21 +277,28 @@ function getHelpCommandDescription(hCmd, uAL, sID){
     return 'That is not a command.';
 }
 
-function reactOk (channelID) {
-    bot.getMessages({
-        channelID: channelID,
-        limit: 1
-    }, function(error, messageArray) {
-        if (log({error: error, response: messageArray})) {
-            bot.addReaction({
-                channelID: channelID,
-                messageID: messageArray[0].id,
-                // Get reaction emojis from https://emojipedia.org/ok-hand-sign/
-                reaction: "👌"
-            }, function(error, response) {
-                log({error: error, response: response});
-            });
-        }
+/**
+ * @description Reacts to the given message in the given channel.
+ *
+ * @param {String} options.channelID The channel ID of the messages to be deleted.
+ * @param {String} options.messageID The ID of the message to react to.
+ * @param {String} options.reaction The a string representing the reaction to use.
+ */
+ //TODO: Make react function with a dictionary for taking strings and matching to emoji
+function react(options) {
+    // Get reaction emojis from https://emojipedia.org/ok-hand-sign/
+    var reactions = {'+1': "👍",
+        '-1': "👎",
+        'ok': "👌"
+    };
+
+    bot.addReaction({
+        channelID: options.channelID,
+        messageID: options.messageID,
+        reaction: reactions[options.reaction]
+    }, function(error, response) {
+        // log({error: error, response: response});
+        if (error) console.log(error);
     });
 }
 
@@ -250,8 +314,11 @@ function reactOk (channelID) {
  * @param {function(Array<String>, String):undefined} callback Calls a function giving it the array of messages compiled and the channel ID of where they are from.
  */
 function getLastMessagesFrom(options, callback) {
+//TODO Promisify
     var numberOfMessagesToRetrieve = 50; // Default 50, limit 100, needs to be more than 1 for function to work.
     options.messageIDs = options.messageIDs || [];
+
+    console.log('The victim id is:'+options.victim);
 
     bot.getMessages({
         channelID: options.channelID,
@@ -285,8 +352,10 @@ function getLastMessagesFrom(options, callback) {
  * @param {String} options.channelID The channel ID of the messages to be deleted.
  * @param {String} options.victim The ID of the user who's messages are being deleted.
  * @param {String} options.instigator The ID of the user that initiated the deletion.
+ * @param {String} options.reactID The ID of the message to react to.
  */
 function deleteMessages(options) {
+//TODO Promisify
     if (options.messagesToDelete.length > 1) {
         // takes 2 - 100 messages so call recursively if there is more than 100 passing the undeleted through
         var endSlice;
@@ -319,7 +388,7 @@ function deleteMessages(options) {
                         to: options.victim,
                         message: 'Messages you sent in channel <#'+options.channelID+'> have been deleted by <@'+options.instigator+'>.'
                     }, function(error,response){
-                        if (log({error: error, response: response})) reactOk(options.channelID);
+                        if (log({error: error, response: response})) react({channelID:options.channelID, messageID: options.reactID, reaction: '+1'});
                     });
                 }
                 else {
@@ -352,7 +421,7 @@ function deleteMessages(options) {
                         to: options.victim,
                         message: 'Messages you sent in channel <#'+options.channelID+'> have been deleted by <@'+options.instigator+'>.'
                     }, function(error,response){
-                        if (log({error: error, response: response})) reactOk(options.channelID);
+                        if (log({error: error, response: response})) react({channelID:options.channelID, messageID: options.reactID, reaction: '+1'});
                     });
                 }
                 else {
@@ -410,7 +479,9 @@ bot.on('disconnect', function(msg, code){
 
 bot.on('message', function (user, userID, channelID, message, event) {
     // console.log(event);
-    console.log(userID);
+    // console.log(event.d.id);
+    // console.log(userID);
+    var eventID = event.d.id;
     if (bot.channels[channelID]) {
         var serverID = bot.channels[channelID].guild_id;
         if (!Object.keys(serversConfig).includes(serverID)) {
@@ -471,19 +542,20 @@ bot.on('message', function (user, userID, channelID, message, event) {
                                 serversConfig[serverID].commandAccessLevels[item] = Number(args[index+1]);
                             }
                         });
+                        migrateServerConfig(configSaveReload);
+                        react({channelID:channelID, messageID: eventID, reaction: '+1'});
 
-                        fs.writeFile('./servers.json', JSON.stringify(serversConfig, null, 4), function(error){
-                            if (error) throw error;
-                            console.log('RELOADING config');
-                            serversConfig = JSON.parse(fs.readFileSync('./servers.json', 'utf8'));
-                            console.log(serversConfig);
-                        });
                         commandExecuted = true;
                         break;
                     case 'configShow':
-                        bot.sendMessage({
+                        botSendMessage({
                             to: channelID,
                             message: JSON.stringify(serversConfig[serverID], null, 4)
+                        }).then( function(response) {
+                            react({channelID:channelID, messageID: eventID, reaction: '+1'});
+                        }).catch( function(error) {
+                            errorLog({error: error, channelID: channelID, eventID: eventID});
+                            // react({channelID:channelID, messageID: eventID, reaction: '-1'});
                         });
                         commandExecuted = true;
                         break;
@@ -492,6 +564,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
             if (userAccessLevel <= serversConfig[serverID].commandAccessLevels.moderation && commandExecuted === false) {
                 switch(cmd) {
                     case 'deleteUserMessages':
+                    //TODO ad in code to -1 for errors
                         if (isUserID(args[1])) {
                             if (userAccessLevel < getUserAccessLevel(getUserString(args[1]), serverID) && Number.isInteger(Number(args[2])) && 1 <= Number(args[2]) <= 500) {
                                 console.log('Number of messages to delete validated');
@@ -507,17 +580,23 @@ bot.on('message', function (user, userID, channelID, message, event) {
                             console.log('passed user id and role id');
                             if (userAccessLevel < getUserAccessLevel(getUserString(args[1]), serverID)) {
                                 console.log('sending add request');
-                                bot.addToRole({
+                                botAddToRole({
                                     serverID: serverID,
                                     userID: getUserString(args[1]),
                                     roleID: getRoleString(args[2])
-                                }, function(error,response){
-                                    if (log({error: error, response: response})) {
-                                        bot.sendMessage({
-                                            to: channelID,
-                                            message: 'Congratulations <@'+getUserString(args[1])+'> you\'ve been added to @'+bot.servers[serverID].roles[getRoleString(args[2])].name
-                                        });
-                                    }
+                                }).then( function(response) {
+                                    console.log(response);
+                                    return botSendMessage({
+                                        to: channelID,
+                                        message: 'Congratulations <@'+getUserString(args[1])+'> you\'ve been added to @'+bot.servers[serverID].roles[getRoleString(args[2])].name
+                                    });
+                                }).then( function(response) {
+                                    console.log(response);
+                                    react({channelID:channelID, messageID: eventID, reaction: '+1'});
+                                }).catch( function(error) {
+                                    errorLog({error: error, channelID: channelID, eventID: eventID});
+                                    // console.log(error);
+                                    // react({channelID:channelID, messageID: eventID, reaction: '-1'});
                                 });
                             }
                         }
@@ -530,17 +609,23 @@ bot.on('message', function (user, userID, channelID, message, event) {
                             console.log('passed user id and role id');
                             if (userAccessLevel < getUserAccessLevel(getUserString(args[1]), serverID)) {
                                 console.log('sending add request');
-                                bot.removeFromRole({
+                                botRemoveFromRole({
                                     serverID: serverID,
                                     userID: getUserString(args[1]),
                                     roleID: getRoleString(args[2])
-                                }, function(error,response){
-                                    if (log({error: error, response: response})) {
-                                        bot.sendMessage({
-                                            to: channelID,
-                                            message: 'Congratulations <@'+getUserString(args[1])+'> you\'ve been removed from @'+bot.servers[serverID].roles[getRoleString(args[2])].name
-                                        });
-                                    }
+                                }).then( function(response) {
+                                    console.log(response);
+                                    return botSendMessage({
+                                        to: channelID,
+                                        message: 'Congratulations <@'+getUserString(args[1])+'> you\'ve been removed from @'+bot.servers[serverID].roles[getRoleString(args[2])].name
+                                    });
+                                }).then( function(response) {
+                                    console.log(response);
+                                    react({channelID:channelID, messageID: eventID, reaction: '+1'});
+                                }).catch( function(error) {
+                                    errorLog({error: error, channelID: channelID, eventID: eventID});
+                                    // console.log(error);
+                                    // react({channelID:channelID, messageID: eventID, reaction: '-1'});
                                 });
                             }
                         }
@@ -553,14 +638,120 @@ bot.on('message', function (user, userID, channelID, message, event) {
                     case 'test':
                         console.log(0 <= Number('123456') <= 999999999999999999, Number('123456'));
                         console.log(!isNaN(Number('123456')), Number('123456'));
+                        react({channelID:channelID, messageID: eventID, reaction: '+1'});
                         commandExecuted = true;
                         break;
                     case 'sfull':
                         console.log(bot.servers[serverID]);
+                        react({channelID:channelID, messageID: eventID, reaction: '+1'});
                         commandExecuted = true;
                         break;
                     case 'rfull':
                         console.log(getAllServerRoles(serverID));
+                        react({channelID:channelID, messageID: eventID, reaction: '+1'});
+                        commandExecuted = true;
+                        break;
+                    case 't':
+                        if (args[1] != undefined) {
+                            function getStuffAsync(param){
+                                return new Promise(function(resolve,reject){
+                                    bot.sendMessage(param, function(error,response) {
+                                        if (error !== null) return reject(error);
+                                        resolve(response);
+                                    });
+                                });
+                            }
+                            getStuffAsync({
+                                to: channelID,
+                                message: 'https://www.google.com.au/search?q='+args.slice(1).join('+')
+                            }).then( function(response) {
+                                console.log(response);
+                                react({channelID:channelID, messageID: eventID, reaction: '+1'});
+                            }).catch( function(error) {
+                                console.log(error);
+                                react({channelID:channelID, messageID: eventID, reaction: '-1'});
+                            });
+                        }
+                        commandExecuted = true;
+                        break;
+                    case 'y':
+                        if (args[1] != undefined) {
+                            bot.getMessages({
+                                channelID: {dontwork: 123,
+                                pleasebreakfortestingpurposes: 'heck yes'},//channelID,
+                                before:  eventID,
+                                limit: 100
+                            }, function(err, res) {
+                                if (err) console.log('getMessages error is: '+err);
+                                if (res) console.log('getMessages response is: '+Object.keys(res));
+                            });
+                            bot.sendMessage({
+                                channelID: 123,
+                                message: 123
+                            }, function(err, res) {
+                                if (err) console.log('sendMessage error is: '+err);
+                                if (res) console.log('sendMessage response is: '+res);
+                            });
+                            botSendMessage({
+                                to: channelID,
+                                message: 'https://www.google.com.au/search?q='+args.slice(1).join('+')
+                            }).then( function(response) {
+                                console.log(response);
+                                react({channelID:channelID, messageID: eventID, reaction: '+1'});
+                            }).then(
+                                () => {
+                                    console.log('is this the looper')
+                                    return botGetMessages({
+                                        channelID: 'eventID',//channelID,
+                                        before:  eventID,
+                                        limit: 100
+                                    });
+
+                            }).then( function(messagesArray) {
+                                console.log('here 1');
+                                return botSendMessage({
+                                    to: channelID,
+                                    message: 'And the response is: '+ messagesArray.map(message => message.content).join(', ').substring(0,1800)//Object.keys(messagesArray[1])//messagesArray.join(', ')
+                                });
+                            }).catch( function(error) {
+                                console.log('here 2');
+                                errorLog({error: error, channelID: channelID, eventID: eventID});
+                                // console.log(error);
+                                // react({channelID:channelID, messageID: eventID, reaction: '-1'});
+                            });
+                        }
+                        console.log('here 3');
+                        commandExecuted = true;
+                        console.log('here 4: '+commandExecuted);
+                        break;
+                    case 'z':
+                        botSendMessage({
+                            to: channelID,
+                            message: 'https://www.google.com.au/search?q='+args.slice(1).join('+')
+                        }).then( function(response) {
+                            console.log(response);
+                            react({channelID:channelID, messageID: eventID, reaction: '+1'});
+                        }).then(
+                            () => {
+                                console.log('here 0')
+                                return botSendMessage({
+                                    to: 123,
+                                    message: 123
+                                });
+                        }).then(
+                            () => {
+                                console.log('here 1');
+                                return botSendMessage({
+                                    to: channelID,
+                                    message: 'the successful message'
+                                });
+
+                        }).catch( function(error) {
+                            console.log('here 2');
+                            errorLog({error: error, channelID: channelID, eventID: eventID});
+                            // console.log(error);
+                            // react({channelID: channelID, messageID: eventID, reaction: '-1'});
+                        });
                         commandExecuted = true;
                         break;
                 }
@@ -568,32 +759,51 @@ bot.on('message', function (user, userID, channelID, message, event) {
             if (userAccessLevel <= serversConfig[serverID].commandAccessLevels.general && commandExecuted === false) {
                 switch(cmd) {
                     case 'ping':
-                        bot.sendMessage({
+                        botSendMessage({
                             to: channelID,
                             message: 'Pong!'
+                        }).then( function(response) {
+                            react({channelID:channelID, messageID: eventID, reaction: '+1'});
+                            console.log(response);
+                        }).catch( function(error) {
+                            errorLog({error: error, channelID: channelID, eventID: eventID});
                         });
-                        reactOk(channelID);
                         commandExecuted = true;
                         break;
                     case 'lookbusy':
-                        bot.simulateTyping(
+                        botSimulateTyping(
                             channelID
-                        );
+                        ).then( function(response) {
+                            react({channelID:channelID, messageID: eventID, reaction: '+1'});
+                            console.log(response);
+                        }).catch( function(error) {
+                            errorLog({error: error, channelID: channelID, eventID: eventID});
+                        });
                         commandExecuted = true;
                         break;
                     case 'google':
                         if (args[1] != undefined) {
-                            bot.sendMessage({
+                            botSendMessage({
                                 to: channelID,
                                 message: 'https://www.google.com.au/search?q='+args.slice(1).join('+')
+                            }).then( function(response) {
+                                react({channelID:channelID, messageID: eventID, reaction: '+1'});
+                                console.log(response);
+                            }).catch( function(error) {
+                                errorLog({error: error, channelID: channelID, eventID: eventID});
                             });
                         }
                         commandExecuted = true;
                         break;
                     case 'source':
-                        bot.sendMessage({
+                        botSendMessage({
                             to: channelID,
                             message: 'https://github.com/LochMess/ButlerBot'
+                        }).then( function(response) {
+                            react({channelID:channelID, messageID: eventID, reaction: '+1'});
+                            console.log(response);
+                        }).catch( function(error) {
+                            errorLog({error: error, channelID: channelID, eventID: eventID});
                         });
                         commandExecuted = true;
                         break;
@@ -611,13 +821,19 @@ bot.on('message', function (user, userID, channelID, message, event) {
                             helpMessage += getHelpCommandDescription(args[1], userAccessLevel, serverID);
                         }
 
-                        bot.sendMessage({
+                        botSendMessage({
                             to: channelID,
                             message: helpMessage
+                        }).then( function(response) {
+                            react({channelID:channelID, messageID: eventID, reaction: '+1'});
+                            console.log(response);
+                        }).catch( function(error) {
+                            errorLog({error: error, channelID: channelID, eventID: eventID});
                         });
                         commandExecuted = true;
                         break;
                     case 'deleteMessages':
+                    //TODO Add promises
                         console.log('running deleteMessages');
 
                         if (Number.isInteger(Number(args[1])) && 1 <= Number(args[1]) <= 500) {
@@ -633,17 +849,27 @@ bot.on('message', function (user, userID, channelID, message, event) {
             if (userAccessLevel <= serversConfig[serverID].commandAccessLevels.roleQuery && commandExecuted === false) {
                 switch(cmd) {
                     case 'roles':
-                        bot.sendMessage({
+                        botSendMessage({
                             to: channelID,
                             message: 'The current roles on the server are: '+getRoleNames(getAllServerRolesIds(serverID), serverID).join(', ')
+                        }).then( function(response) {
+                            react({channelID:channelID, messageID: eventID, reaction: '+1'});
+                            console.log(response);
+                        }).catch( function(error) {
+                            errorLog({error: error, channelID: channelID, eventID: eventID});
                         });
                         commandExecuted = true;
                         break;
                     case 'myRoles':
                         var member = getMember(userID, serverID);
-                        bot.sendMessage({
+                        botSendMessage({
                             to: channelID,
                             message: 'You\'re roles are: '+getRoleNames(member.roles, serverID).join(', ')
+                        }).then( function(response) {
+                            react({channelID:channelID, messageID: eventID, reaction: '+1'});
+                            console.log(response);
+                        }).catch( function(error) {
+                            errorLog({error: error, channelID: channelID, eventID: eventID});
                         });
                         commandExecuted = true;
                         break;
@@ -661,9 +887,14 @@ bot.on('message', function (user, userID, channelID, message, event) {
                                 }
                             }
                         }
-                        bot.sendMessage({
+                        botSendMessage({
                             to: channelID,
                             message: botReply
+                        }).then( function(response) {
+                            react({channelID:channelID, messageID: eventID, reaction: '+1'});
+                            console.log(response);
+                        }).catch( function(error) {
+                            errorLog({error: error, channelID: channelID, eventID: eventID});
                         });
                         commandExecuted = true;
                         break;
@@ -676,17 +907,21 @@ bot.on('message', function (user, userID, channelID, message, event) {
                             var roleId = getRoleString(args[1]);
                             var privilegedRole = isPrivilegedRole(roleId, serverID);
                             if (privilegedRole === false) {
-                                bot.addToRole({
+                                botAddToRole({
                                     serverID: serverID,
                                     userID: userID,
                                     roleID: roleId
-                                }, function(error,response){
-                                    if (log({error: error, response: response})) {
-                                        bot.sendMessage({
-                                            to: channelID,
-                                            message: 'Congratulations <@'+userID+'> you\'ve been added to @'+bot.servers[serverID].roles[roleId].name
-                                        });
-                                    }
+                                }).then( function(response) {
+                                    console.log(response);
+                                    return botSendMessage({
+                                        to: channelID,
+                                        message: 'Congratulations <@'+userID+'> you\'ve been added to @'+bot.servers[serverID].roles[roleId].name
+                                    });
+                                }).then( function(response) {
+                                    react({channelID:channelID, messageID: eventID, reaction: '+1'});
+                                    console.log(response)
+                                }).catch( function(error) {
+                                    errorLog({error: error, channelID: channelID, eventID: eventID});
                                 });
                             }
                         }
@@ -697,18 +932,22 @@ bot.on('message', function (user, userID, channelID, message, event) {
                             var roleId = getRoleString(args[1]);
                             var privilegedRole = isPrivilegedRole(roleId, serverID);
                             if (privilegedRole === false) {
-                                bot.removeFromRole({
+                                botRemoveFromRole({
                                     serverID: serverID,
                                     userID: userID,
                                     roleID: roleId
-                                }, function(error,response){
-                                    if (log({error: error, response: response})) {
-                                        bot.sendMessage({
-                                            to: channelID,
-    //TODO look to see if can colour message text the same as the colour of the role.
-                                            message: 'Congratulations <@'+userID+'> you\'ve left @'+bot.servers[serverID].roles[roleId].name
-                                        });
-                                    }
+                                }).then( function(response) {
+                                    console.log(response);
+                                    return botSendMessage({
+                                        to: channelID,
+//TODO look to see if can colour message text the same as the colour of the role.
+                                        message: 'Congratulations <@'+userID+'> you\'ve left @'+bot.servers[serverID].roles[roleId].name
+                                    });
+                                }).then( function(response) {
+                                    react({channelID:channelID, messageID: eventID, reaction: '+1'});
+                                    console.log(response);
+                                }).catch( function(error) {
+                                    errorLog({error: error, channelID: channelID, eventID: eventID});
                                 });
                             }
                         }
@@ -723,29 +962,38 @@ bot.on('message', function (user, userID, channelID, message, event) {
                         var colorDec = parseInt(color.substring(1), 16);
                         var name = message.substring(message.indexOf(' ')+1,message.search('-c ')).trim();
                         if (!(getAllServerRoles(serverID).map(role => role.name).includes(name)) && !(getAllServerRoles(serverID).map(role => role.color).includes(colorDec))) {
-                            bot.createRole(serverID, function(error, response){
-                                if (log({error: error, response: response})) {
-                                    bot.editRole({
-                                        serverID: serverID,
-                                        roleID: response.id,
-                                        name: name,
-                                        mentionable: true,
-                                        color: color
-                                    }, function(error, response){
-                                        if (log({error: error, response: response})) {
-                                            bot.sendMessage({
-                                                to: channelID,
-                                                message: 'New role <@&'+response.id+'> created.'
-                                            });
-                                        }
-                                    });
-                                }
+                            botCreateRole(serverID
+                            ).then( function(response) {
+                                console.log(response);
+                                return botEditRole({
+                                    serverID: serverID,
+                                    roleID: response.id,
+                                    name: name,
+                                    mentionable: true,
+                                    color: color
+                                });
+                            }).then( function(response) {
+                                console.log(response);
+                                return botSendMessage({
+                                    to: channelID,
+                                    message: 'New role <@&'+response.id+'> created.'
+                                });
+                            }).then( function(response) {
+                                console.log(response);
+                                react({channelID:channelID, messageID: eventID, reaction: '+1'});
+                            }).catch( function(error) {
+                                errorLog({error: error, channelID: channelID, eventID: eventID});
                             });
                         }
                         else {
-                            bot.sendMessage({
+                            botSendMessage({
                                 to: channelID,
                                 message: 'Name or color already taken.'
+                            }).then( function(response) {
+                                console.log(response);
+                                react({channelID:channelID, messageID: eventID, reaction: '+1'});
+                            }).catch( function(error) {
+                                errorLog({error: error, channelID: channelID, eventID: eventID});
                             });
                         }
                         commandExecuted = true;
@@ -757,16 +1005,20 @@ bot.on('message', function (user, userID, channelID, message, event) {
                     case 'deleteRole':
                         var roleID = getRoleString(args[1]);
                         if (args[1] != undefined) {
-                            bot.deleteRole({
+                            botDeleteRole({
                                 serverID: serverID,
                                 roleID: getRoleString(args[1])
-                            }, function(error, response){
-                                if (log({error: error, response: response})) {
-                                    bot.sendMessage({
-                                        to: channelID,
-                                        message: 'Role deleted. Like totally forever RIP.'
-                                    });
-                                }
+                            }).then( function(response) {
+                                console.log(response);
+                                return botSendMessage({
+                                    to: channelID,
+                                    message: 'Role deleted. Like totally forever RIP.'
+                                });
+                            }).then( function(response) {
+                                console.log(response);
+                                react({channelID:channelID, messageID: eventID, reaction: '+1'});
+                            }).catch( function(error) {
+                                errorLog({error: error, channelID: channelID, eventID: eventID});
                             });
                         }
                         commandExecuted = true;
@@ -774,9 +1026,14 @@ bot.on('message', function (user, userID, channelID, message, event) {
                 }
             }
             if (commandExecuted === false) {
-                bot.sendMessage({
+                botSendMessage({
                     to: channelID,
                     message: 'Sorry that is not a command or you do not have access to it. More help coming soon! Try !help'
+                }).then( function(response) {
+                    console.log(response);
+                    react({channelID:channelID, messageID: eventID, reaction: '+1'});
+                }).catch( function(error) {
+                    errorLog({error: error, channelID: channelID, eventID: eventID});
                 });
             }
         }

@@ -1,6 +1,6 @@
 {
   "name": "butler.discord.bot",
-  "version": "1.0.1",
+  "version": "1.0.3",
   "description": "Role management and stuff.",
   "main": "bot.js",
   "author": "LochMess",
@@ -12,7 +12,8 @@
     "devStart": "nodemon bot.js"
   },
   "dependencies": {
-    "discord.io": "github:woor/discord.io#gateway_v6"
+    "discord.io": "github:woor/discord.io#gateway_v6",
+    "util": "^0.11.0"
   },
   "devDependencies": {
     "nodemon": "^1.15.1"
