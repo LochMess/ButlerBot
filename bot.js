@@ -1,9 +1,9 @@
-var Discord = require('discord.io');
-var fs = require('fs');
+const Discord = require('discord.io');
+const fs = require('fs');
 const util = require('util');
-var help = require('./help.json');
+const help = require('./help.json');
 
-var auth = require('./auth.json');
+const auth = require('./auth.json');
 var serversConfig;
 
 function configSaveReload () {
@@ -44,6 +44,8 @@ var botEditRole;
 var botDeleteRole;
 var botRemoveFromRole;
 var botAddReaction;
+var botDeleteMessages;
+var botDeleteMessage;
 
 var bot = new Discord.Client({
    token: auth.token,
@@ -64,6 +66,8 @@ bot.on('ready', function (evt) {
     botDeleteRole = util.promisify(bot.deleteRole).bind(bot);
     botRemoveFromRole = util.promisify(bot.removeFromRole).bind(bot);
     botAddReaction = util.promisify(bot.addReaction).bind(bot);
+    botDeleteMessages = util.promisify(bot.deleteMessages).bind(bot);
+    botDeleteMessage = util.promisify(bot.deleteMessage).bind(bot);
 });
 
 function test() {
@@ -78,7 +82,7 @@ function test() {
  * @param {String} options.channelID The ID of the channel the response is from.
  */
 function log(options) {
-//TODO fix the error parsing
+//TODO Deprecate
     if (options.error) {
         console.log('Error (log):\n', options.error);
         bot.sendMessage({
@@ -268,7 +272,7 @@ function getHelpCommandDescription(hCmd, uAL, sID){
     for (var group of Object.keys(help)) {
         if (uAL <= serversConfig[sID].commandAccessLevels[group]) {
             for (var command of Object.keys(help[group])) {
-                if (hCmd === command) {
+                if (hCmd === command.toLowerCase()) {
                     return help[group][command];
                 }
             }
@@ -310,22 +314,22 @@ function react(options) {
  * @param {String} options.channelID The ID of the channel to look for the messages within.
  * @param {Number} options.numberOfMessages The number of messages to delete.
  * @param {Array<String>} [options.messageIDs] The array of messages to be deleted, used when the function calls itself.
- * @param {String} [options.lastMessageID] The ID of the last message that was checked, used when the function calls itself.
+ * @param {String} options.lastMessageID The ID of the last message that was checked, used when the function calls itself.
+ * @param {String} options.eventID The ID of the event that triggered the bot.
  * @param {function(Array<String>, String):undefined} callback Calls a function giving it the array of messages compiled and the channel ID of where they are from.
  */
 function getLastMessagesFrom(options, callback) {
 //TODO Promisify
-    var numberOfMessagesToRetrieve = 50; // Default 50, limit 100, needs to be more than 1 for function to work.
+    var numberOfMessagesToRetrieve = 100; // Default 50, limit 100, needs to be more than 1 for function to work.
     options.messageIDs = options.messageIDs || [];
 
     console.log('The victim id is:'+options.victim);
 
-    bot.getMessages({
+    botGetMessages({
         channelID: options.channelID,
         before: options.lastMessageID,
         limit: numberOfMessagesToRetrieve
-    }, function(error, messageArray) {
-        log({error: error});
+    }).then( function(messageArray) {
         messageArray.forEach(function(item, index) {
             // Add check for if the message is less than 14 days old.
             var current = new Date();
@@ -336,12 +340,14 @@ function getLastMessagesFrom(options, callback) {
             options.lastMessageID = item.id;
         });
         if (options.messageIDs.length < options.numberOfMessages && numberOfMessagesToRetrieve === messageArray.length) {
-            getLastMessagesFrom({victim: options.victim, channelID: options.channelID, numberOfMessages: options.numberOfMessages, messageIDs: options.messageIDs, lastMessageID: options.lastMessageID}, callback);
+            getLastMessagesFrom({victim: options.victim, channelID: options.channelID, numberOfMessages: options.numberOfMessages, messageIDs: options.messageIDs, lastMessageID: options.lastMessageID, eventID: options.eventID}, callback);
         }
         else {
             console.log('Calling back');
-            callback({messagesToDelete: options.messageIDs, channelID: options.channelID, victim: options.victim, instigator: options.instigator});
+            callback({messagesToDelete: options.messageIDs, channelID: options.channelID, victim: options.victim, instigator: options.instigator, eventID: options.eventID});
         }
+    },).catch( function(error) {
+        errorLog({error: error, channelID: options.channelID, eventID: options.eventID});
     });
 }
 
@@ -352,87 +358,88 @@ function getLastMessagesFrom(options, callback) {
  * @param {String} options.channelID The channel ID of the messages to be deleted.
  * @param {String} options.victim The ID of the user who's messages are being deleted.
  * @param {String} options.instigator The ID of the user that initiated the deletion.
- * @param {String} options.reactID The ID of the message to react to.
+ * @param {String} options.eventID The ID of the event that triggered the bot.
  */
 function deleteMessages(options) {
-//TODO Promisify
+//TODO Promisify, and rework has some bugs.
+// Can't react to messages that have been deleted.
+// Rate limiting from discord, possibly from get messages calls?
     if (options.messagesToDelete.length > 1) {
         // takes 2 - 100 messages so call recursively if there is more than 100 passing the undeleted through
         var endSlice;
         if (options.messagesToDelete.length > 100) {
             endSlice = 100;
         }
+        // if (options.messagesToDelete.length > 2) {
+        //     endSlice = 2;
+        // }
         else {
             endSlice = options.messagesToDelete.length;
         }
-        bot.deleteMessages({
+        botDeleteMessages({
             channelID: options.channelID,
             messageIDs: options.messagesToDelete.slice(0, endSlice)
-        }, function(error){
-            if (log({error: error}) === false) {
-                bot.sendMessage({
-                    to: options.channelID,
-                    message: 'Error encountered when attempting to delete messages. Bulk delete API'
-                }, function(error,response){
-                    log({error: error, response: response});
-                });
-            }
-            else {
-                if (endSlice != options.messagesToDelete.length) {
-                    setTimeout( function() {
-                        deleteMessages(options.messagesToDelete.slice(endSlice, options.messagesToDelete.length), channelID);
-                    }, 1000); // Delay recusrion call by 1 second to avoid Discord API rate limiting.
-                }
+        }).then( function(response) {
+            // TODO test that it only sends one message to the victim and not multiple if it has to loop
+
+            // More messages to delete recursion call
+            if (endSlice != options.messagesToDelete.length) {
+                setTimeout( function() {
+                    deleteMessages({messagesToDelete: options.messagesToDelete.slice(endSlice, options.messagesToDelete.length), channelID: options.channelID, eventID: options.eventID, instigator: options.instigator, victim: options.victim});
+                }, 100); // Delay recursion call by 100ms to limit spamming Discord API.
+            } else {
                 if (options.instigator) {
                     bot.sendMessage({
                         to: options.victim,
                         message: 'Messages you sent in channel <#'+options.channelID+'> have been deleted by <@'+options.instigator+'>.'
-                    }, function(error,response){
-                        if (log({error: error, response: response})) react({channelID:options.channelID, messageID: options.reactID, reaction: '+1'});
                     });
                 }
                 else {
                     bot.sendMessage({
                         to: options.channelID,
                         message: 'Messages deleted.'
-                    }, function(error,response){
-                        log({error: error, response: response});
                     });
                 }
+            }
+        }).catch( function(error) {
+            console.log('Error, Retry after this many ms: '+error.response.retry_after);
+            if (error.response.retry_after) {
+                setTimeout( function() {
+                    deleteMessages({messagesToDelete: options.messagesToDelete, channelID: options.channelID, eventID: options.eventID, instigator: options.instigator, victim: options.victim});
+                }, error.response.retry_after); // Recall API with the same parameters after the timeout has ended.
+            }
+            else {
+                errorLog({error: error, channelID: options.channelID, eventID: options.eventID});
+                bot.sendMessage({
+                    to: options.channelID,
+                    message: 'Error encountered when attempting to delete messages. Bulk delete API'
+                });
             }
         });
     }
     else {
-        bot.deleteMessage({
+        botDeleteMessage({
             channelID: options.channelID,
             messageID: options.messagesToDelete[0]
-        }, function(error) {
-            if (log({error: error}) === false) {
-                bot.sendMessage({
-                    to: options.channelID,
-                    message: 'Error encountered when attempting to delete messages. Singular delete API.'
-                }, function(error,response){
-                    log({error: error, response: response});
+        }).then( function() {
+            if (options.instigator) {
+                botSendMessage({
+                    to: options.victim,
+                    message: 'Messages you sent in channel <#'+options.channelID+'> have been deleted by <@'+options.instigator+'>.'
                 });
             }
             else {
-                if (options.instigator) {
-                    bot.sendMessage({
-                        to: options.victim,
-                        message: 'Messages you sent in channel <#'+options.channelID+'> have been deleted by <@'+options.instigator+'>.'
-                    }, function(error,response){
-                        if (log({error: error, response: response})) react({channelID:options.channelID, messageID: options.reactID, reaction: '+1'});
-                    });
-                }
-                else {
-                    bot.sendMessage({
-                        to: options.channelID,
-                        message: 'Messages deleted.'
-                    }, function(error,response){
-                        log({error: error, response: response});
-                    });
-                }
+                botSendMessage({
+                    to: options.channelID,
+                    message: 'Messages deleted.'
+                });
             }
+        }).catch( function(error) {
+            errorLog({error: error, channelID: options.channelID, eventID: options.eventID});
+            bot.sendMessage({
+                to: options.channelID,
+                message: 'Error encountered when attempting to delete messages. Singular delete API.'
+            });
         });
     }
 }
@@ -568,7 +575,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                         if (isUserID(args[1])) {
                             if (userAccessLevel < getUserAccessLevel(getUserString(args[1]), serverID) && Number.isInteger(Number(args[2])) && 1 <= Number(args[2]) <= 500) {
                                 console.log('Number of messages to delete validated');
-                                getLastMessagesFrom({victim:getUserString(args[1]), channelID:channelID, numberOfMessages:args[2], instigator: userID}, deleteMessages);
+                                getLastMessagesFrom({victim:getUserString(args[1]), channelID:channelID, numberOfMessages:args[2], instigator: userID, eventID: eventID}, deleteMessages);
                             }
                         }
                         commandExecuted = true;
@@ -744,6 +751,14 @@ bot.on('message', function (user, userID, channelID, message, event) {
                         });
                         commandExecuted = true;
                         break;
+                    case 'get':
+                        getLastMessagesFrom({victim: userID, channelID: channelID, numberOfMessages: args[1], eventID: eventID}, function(options) {
+                            for (var value in options) {
+                                if (options[value]) Array.isArray(options[value]) ? console.log("Value passed to callback, "+value+": "+options[value].length) : console.log("Value passed to callback, "+value+": "+options[value]);
+                            }
+
+                        });
+                        break;
                 }
             }
             if (userAccessLevel <= serversConfig[serverID].commandAccessLevels.general && commandExecuted === false) {
@@ -796,7 +811,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                     case 'help':
                         var helpMessage = '';
                         if (args[1] === undefined) {
-                            helpMessage += 'You have access to the following commands, to learn more about a command use !help <command>\n'
+                            helpMessage += 'You have access to the following commands, to learn more about a command use '+serversConfig[serverID].commandCharacter+'help <command>\n'
                             Object.keys(help).forEach(function(item, index){
                                 if (userAccessLevel <= serversConfig[serverID].commandAccessLevels[item]) {
                                     helpMessage += serversConfig[serverID].commandCharacter+Object.keys(help[item]).join('\n'+serversConfig[serverID].commandCharacter)+'\n';
@@ -823,7 +838,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
 
                         if (Number.isInteger(Number(args[1])) && 1 <= Number(args[1]) <= 500) {
                             console.log('Number of messages to delete validated');
-                            getLastMessagesFrom({victim: userID, channelID: channelID, numberOfMessages: args[1]}, deleteMessages);
+                            getLastMessagesFrom({victim: userID, channelID: channelID, numberOfMessages: args[1], eventID: eventID}, deleteMessages);
                         }
 
                         console.log('execution after function call resumed.');
