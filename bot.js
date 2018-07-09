@@ -318,7 +318,7 @@ function react(options) {
  * @param {String} options.eventID The ID of the event that triggered the bot.
  * @param {function(Array<String>, String):undefined} callback Calls a function giving it the array of messages compiled and the channel ID of where they are from.
  */
-function getLastMessagesFrom(options, callback) {
+function getLastMessagesFromUser(options, callback) {
 //TODO Promisify
     var numberOfMessagesToRetrieve = 100; // Default 50, limit 100, needs to be more than 1 for function to work.
     options.messageIDs = options.messageIDs || [];
@@ -340,11 +340,52 @@ function getLastMessagesFrom(options, callback) {
             options.lastMessageID = item.id;
         });
         if (options.messageIDs.length < options.numberOfMessages && numberOfMessagesToRetrieve === messageArray.length) {
-            getLastMessagesFrom({victim: options.victim, channelID: options.channelID, numberOfMessages: options.numberOfMessages, messageIDs: options.messageIDs, lastMessageID: options.lastMessageID, eventID: options.eventID}, callback);
+            getLastMessagesFromUser({victim: options.victim, channelID: options.channelID, numberOfMessages: options.numberOfMessages, messageIDs: options.messageIDs, lastMessageID: options.lastMessageID, eventID: options.eventID, instigator: options.instigator}, callback);
         }
         else {
             console.log('Calling back');
             callback({messagesToDelete: options.messageIDs, channelID: options.channelID, victim: options.victim, instigator: options.instigator, eventID: options.eventID});
+        }
+    },).catch( function(error) {
+        errorLog({error: error, channelID: options.channelID, eventID: options.eventID});
+    });
+}
+
+/**
+ * @description Get the number of messages requested from the given channel provided they are less than 14 days old and pass this list to a callback function typically to handle the deletion of these messages.
+ *
+ * @param {String} options.channelID The ID of the channel to look for the messages within.
+ * @param {Number} options.numberOfMessages The number of messages to delete.
+ * @param {Array<String>} [options.messageIDs] The array of messages to be deleted, used when the function calls itself.
+ * @param {String} options.lastMessageID The ID of the last message that was checked, used when the function calls itself.
+ * @param {String} options.eventID The ID of the event that triggered the bot.
+ * @param {function(Array<String>, String):undefined} callback Calls a function giving it the array of messages compiled and the channel ID of where they are from.
+ */
+function getLastMessagesFromChannel(options, callback) {
+
+    var numberOfMessagesToRetrieve = 100; // Default 50, limit 100, needs to be more than 1 for function to work.
+    options.messageIDs = options.messageIDs || [];
+
+    botGetMessages({
+        channelID: options.channelID,
+        before: options.lastMessageID,
+        limit: numberOfMessagesToRetrieve
+    }).then( function(messageArray) {
+        messageArray.forEach(function(item, index) {
+            // Add check for if the message is less than 14 days old.
+            var current = new Date();
+            var messageDate = new Date(item.timestamp);
+            if (options.messageIDs.length < options.numberOfMessages && Math.abs(current.getTime() - messageDate.getTime()) / (1000*60*60*24) < 14) {
+                options.messageIDs.push(item.id);
+            }
+            options.lastMessageID = item.id;
+        });
+        if (options.messageIDs.length < options.numberOfMessages && numberOfMessagesToRetrieve === messageArray.length) {
+            getLastMessagesFromChannel({channelID: options.channelID, numberOfMessages: options.numberOfMessages, messageIDs: options.messageIDs, lastMessageID: options.lastMessageID, eventID: options.eventID}, callback);
+        }
+        else {
+            console.log('Calling back');
+            callback({messagesToDelete: options.messageIDs, channelID: options.channelID, eventID: options.eventID});
         }
     },).catch( function(error) {
         errorLog({error: error, channelID: options.channelID, eventID: options.eventID});
@@ -575,7 +616,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                         if (isUserID(args[1])) {
                             if (userAccessLevel < getUserAccessLevel(getUserString(args[1]), serverID) && Number.isInteger(Number(args[2])) && 1 <= Number(args[2]) <= 500) {
                                 console.log('Number of messages to delete validated');
-                                getLastMessagesFrom({victim:getUserString(args[1]), channelID:channelID, numberOfMessages:args[2], instigator: userID, eventID: eventID}, deleteMessages);
+                                getLastMessagesFromUser({victim:getUserString(args[1]), channelID:channelID, numberOfMessages:args[2], instigator: userID, eventID: eventID}, deleteMessages);
                             }
                         }
                         commandExecuted = true;
@@ -628,6 +669,14 @@ bot.on('message', function (user, userID, channelID, message, event) {
                                 });
                             }
                         }
+                        commandExecuted = true;
+                        break;
+                    case 'clearChannel'.toLowerCase():
+                        getLastMessagesFromChannel({channelID: channelID, numberOfMessages: 500, eventID: eventID}, deleteMessages);
+                        commandExecuted = true;
+                        break;
+                    case 'cleanChannel'.toLowerCase():
+                        getLastMessagesFromChannel({channelID: channelID, numberOfMessages: args[1], eventID: eventID}, deleteMessages);
                         commandExecuted = true;
                         break;
                 }
@@ -752,12 +801,13 @@ bot.on('message', function (user, userID, channelID, message, event) {
                         commandExecuted = true;
                         break;
                     case 'get':
-                        getLastMessagesFrom({victim: userID, channelID: channelID, numberOfMessages: args[1], eventID: eventID}, function(options) {
+                        getLastMessagesFromUser({victim: userID, channelID: channelID, numberOfMessages: args[1], eventID: eventID}, function(options) {
                             for (var value in options) {
                                 if (options[value]) Array.isArray(options[value]) ? console.log("Value passed to callback, "+value+": "+options[value].length) : console.log("Value passed to callback, "+value+": "+options[value]);
                             }
 
                         });
+                        commandExecuted = true;
                         break;
                 }
             }
@@ -838,7 +888,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
 
                         if (Number.isInteger(Number(args[1])) && 1 <= Number(args[1]) <= 500) {
                             console.log('Number of messages to delete validated');
-                            getLastMessagesFrom({victim: userID, channelID: channelID, numberOfMessages: args[1], eventID: eventID}, deleteMessages);
+                            getLastMessagesFromUser({victim: userID, channelID: channelID, numberOfMessages: args[1], eventID: eventID}, deleteMessages);
                         }
 
                         console.log('execution after function call resumed.');
