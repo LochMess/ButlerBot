@@ -1,5 +1,6 @@
 {
     "debug": {
+        "developmentCommands": "Refer to source code for development, debug, or commands in testing."
     },
     "configBot": {
         "config": "Use: !config commandCharacter <new character to trigger the bot>\n!config <privilege Role> <tag role here>\n!config remove <privilege Role> <tag role here> \nDescription: Configure the bot for the current server, allocate roles to roles recognised by the bot, and assign command permissions.",
@@ -30,6 +31,8 @@
     "moderation": {
         "deleteUserMessages": "Use: !deleteUserMessages <tag user here> <integer from 1 to 500>\nDescription: Deletes the number of messages given sent by the user given in the current channel, provided the messages are less than 14 days old.",
         "addUserTo": "Use: !addUserTo <tag user here> <tag role here>\nDescription: Adds the given user to the given role.",
-        "removeUserFrom": "Use: !removeUserFrom <tag user here> <tag role here>\nDescription: Removes the user from the given role."
+        "removeUserFrom": "Use: !removeUserFrom <tag user here> <tag role here>\nDescription: Removes the user from the given role.",
+        "clearChannel": "Use: !clearChannel <tag channel here>\nDescription: Deletes up to 500 messages from the given channel provided the messages are less than 14 days old.",
+        "cleanChannel": "Use: !cleanChannel <tag channel here> <integer from 1 to 500>\nDescription: Deletes the number of messages given provided the messages are less than 14 days old."
     }
 }
