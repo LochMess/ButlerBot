@@ -732,24 +732,6 @@ bot.on('message', function (user, userID, channelID, message, event) {
             }
             if (userAccessLevel <= serversConfig[serverID].commandAccessLevels.debug && commandExecuted === false) {
                 switch(cmd) {
-                    case 'event':
-                        var delay = Number(args[1]);
-                        setTimeout( function() {
-                            var regex = RegExp(/\d /,'g');
-                            var match = regex.exec(message);
-                            botSendMessage({
-                                to: channelID,
-                                message: message.substring(match.index+match[0].length)
-                            }).then( function(response) {
-                                console.log(response);
-                            }).catch( function(error) {
-                                console.log(error);
-                                errorLog({error: error, channelID: channelID, eventID: eventID});
-                            });
-                        }, delay*6000);
-                        react({channelID:channelID, messageID: eventID, reaction: '+1'});
-                        commandExecuted = true;
-                        break;
                     case 'test':
                         console.log(0 <= Number('123456') <= 999999999999999999, Number('123456'));
                         console.log(!isNaN(Number('123456')), Number('123456'));
@@ -880,6 +862,24 @@ bot.on('message', function (user, userID, channelID, message, event) {
             }
             if (userAccessLevel <= serversConfig[serverID].commandAccessLevels.general && commandExecuted === false) {
                 switch(cmd) {
+                    case 'event':
+                        var delay = Number(args[1]);
+                        setTimeout( function() {
+                            var regex = RegExp(/\d /,'g');
+                            var match = regex.exec(message);
+                            botSendMessage({
+                                to: channelID,
+                                message: message.substring(match.index+match[0].length)
+                            }).then( function(response) {
+                                console.log(response);
+                            }).catch( function(error) {
+                                console.log(error);
+                                errorLog({error: error, channelID: channelID, eventID: eventID});
+                            });
+                        }, delay*6000);
+                        react({channelID:channelID, messageID: eventID, reaction: '+1'});
+                        commandExecuted = true;
+                        break;
                     case 'ping':
                         botSendMessage({
                             to: channelID,
