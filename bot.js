@@ -2,6 +2,7 @@ const Discord = require('discord.io');
 const fs = require('fs');
 const util = require('util');
 const help = require('./help.json');
+const levenshtein = require('fast-levenshtein');
 
 const auth = require('./auth.json');
 var serversConfig;
@@ -346,7 +347,7 @@ function getLastMessagesFromUser(options, callback) {
             console.log('Calling back');
             callback({messagesToDelete: options.messageIDs, channelID: options.channelID, victim: options.victim, instigator: options.instigator, eventID: options.eventID});
         }
-    },).catch( function(error) {
+    }).catch( function(error) {
         errorLog({error: error, channelID: options.channelID, eventID: options.eventID});
     });
 }
@@ -387,7 +388,51 @@ function getLastMessagesFromChannel(options, callback) {
             console.log('Calling back');
             callback({messagesToDelete: options.messageIDs, channelID: options.channelID, eventID: options.eventID});
         }
-    },).catch( function(error) {
+    }).catch( function(error) {
+        errorLog({error: error, channelID: options.channelID, eventID: options.eventID});
+    });
+}
+
+/**
+ * @description Get up to 500 messages in the current channel sent by or to the bot. Messages less than 14 days old will be deleted.
+ *
+ * @param {String} options.channelID The ID of the channel to look for the messages within.
+ * @param {String} options.serverID The ID of the server the messages are being deleted from.
+ * @param {Number} options.numberOfMessages The number of messages to delete.
+ * @param {Array<String>} [options.messageIDs] The array of messages to be deleted, used when the function calls itself.
+ * @param {String} options.lastMessageID The ID of the last message that was checked, used when the function calls itself.
+ * @param {String} options.eventID The ID of the event that triggered the bot.
+ * @param {function(Array<String>, String):undefined} callback Calls a function giving it the array of messages compiled and the channel ID of where they are from.
+ */
+ function getLastMessagesFromToBot(options, callback) {
+    var numberOfMessagesToRetrieve = 100; // Default 50, limit 100, needs to be more than 1 for function to work.
+    options.messageIDs = options.messageIDs || [];
+
+    console.log('The victim id is:'+options.victim);
+
+    botGetMessages({
+        channelID: options.channelID,
+        before: options.lastMessageID,
+        limit: numberOfMessagesToRetrieve
+    }).then( function(messageArray) {
+        messageArray.forEach(function(item, index) {
+            // Add check for if the message is less than 14 days old.
+            var current = new Date();
+            var messageDate = new Date(item.timestamp);
+            console.log('item.content[0]: '+item.content.substring(0,1)+', serversConfig[options.serverID].commandCharacter: '+serversConfig[options.serverID].commandCharacter);
+            if ((item.content[0] === serversConfig[options.serverID].commandCharacter || item.author.id === options.victim) && options.messageIDs.length < options.numberOfMessages && Math.abs(current.getTime() - messageDate.getTime()) / (1000*60*60*24) < 14) {
+                options.messageIDs.push(item.id);
+            }
+            options.lastMessageID = item.id;
+        });
+        if (options.messageIDs.length < options.numberOfMessages && numberOfMessagesToRetrieve === messageArray.length) {
+            getLastMessagesFromUser({victim: options.victim, serverID: options.serverID, channelID: options.channelID, numberOfMessages: options.numberOfMessages, messageIDs: options.messageIDs, lastMessageID: options.lastMessageID, eventID: options.eventID, instigator: options.instigator}, callback);
+        }
+        else {
+            console.log('Calling back');
+            callback({messagesToDelete: options.messageIDs, channelID: options.channelID, victim: options.victim, instigator: options.instigator, eventID: options.eventID});
+        }
+    }).catch( function(error) {
         errorLog({error: error, channelID: options.channelID, eventID: options.eventID});
     });
 }
@@ -435,7 +480,7 @@ function deleteMessages(options) {
                         message: 'Messages you sent in channel <#'+options.channelID+'> have been deleted by <@'+options.instigator+'>.'
                     });
                 }
-                else {
+                else if (options.victim !== bot.id) {
                     bot.sendMessage({
                         to: options.channelID,
                         message: 'Messages deleted.'
@@ -469,8 +514,8 @@ function deleteMessages(options) {
                     message: 'Messages you sent in channel <#'+options.channelID+'> have been deleted by <@'+options.instigator+'>.'
                 });
             }
-            else {
-                botSendMessage({
+            else if (options.victim !== bot.id) {
+                bot.sendMessage({
                     to: options.channelID,
                     message: 'Messages deleted.'
                 });
@@ -679,10 +724,32 @@ bot.on('message', function (user, userID, channelID, message, event) {
                         getLastMessagesFromChannel({channelID: channelID, numberOfMessages: args[1], eventID: eventID}, deleteMessages);
                         commandExecuted = true;
                         break;
+                    case 'clearbot':
+                        getLastMessagesFromToBot({victim: bot.id, serverID: serverID, channelID: channelID, numberOfMessages: 500, eventID: eventID}, deleteMessages);
+                        commandExecuted = true;
+                        break;
                 }
             }
             if (userAccessLevel <= serversConfig[serverID].commandAccessLevels.debug && commandExecuted === false) {
                 switch(cmd) {
+                    case 'event':
+                        var delay = Number(args[1]);
+                        setTimeout( function() {
+                            var regex = RegExp(/\d /,'g');
+                            var match = regex.exec(message);
+                            botSendMessage({
+                                to: channelID,
+                                message: message.substring(match.index+match[0].length)
+                            }).then( function(response) {
+                                console.log(response);
+                            }).catch( function(error) {
+                                console.log(error);
+                                errorLog({error: error, channelID: channelID, eventID: eventID});
+                            });
+                        }, delay*6000);
+                        react({channelID:channelID, messageID: eventID, reaction: '+1'});
+                        commandExecuted = true;
+                        break;
                     case 'test':
                         console.log(0 <= Number('123456') <= 999999999999999999, Number('123456'));
                         console.log(!isNaN(Number('123456')), Number('123456'));
@@ -1063,6 +1130,34 @@ bot.on('message', function (user, userID, channelID, message, event) {
                 }
             }
             if (commandExecuted === false) {
+                console.log('Nothing ran');
+                var commands = [];
+                Object.keys(help).forEach( function(item, index) {
+                    commands = commands.concat(Object.keys(help[item]));
+                });
+                console.log('commands: '+commands);
+                commands.forEach( function(item, index) {
+                    console.log('item: '+item+', cmd: '+cmd+', diff: '+levenshtein.get(item.toString(), cmd.toString()) <= 5);
+                    if (levenshtein.get(item.toString(), cmd.toString()) <= 5) {
+                        botSendMessage({
+                            to: channelID,
+                            message: 'Did you mean '+item+'?'
+                        }).then( function(response) {
+                            react({channelID:channelID, messageID: eventID, reaction: '+1'});
+                        }).catch( function(error) {
+                            errorLog({error: error, channelID: channelID, eventID: eventID});
+                        });
+                    }
+                })
+                // var helpMessage = '';
+                // if (args[1] === undefined) {
+                //     helpMessage += 'You have access to the following commands, to learn more about a command use '+serversConfig[serverID].commandCharacter+'help <command>\n'
+                //     Object.keys(help).forEach(function(item, index){
+                //         if (userAccessLevel <= serversConfig[serverID].commandAccessLevels[item]) {
+                //             helpMessage += serversConfig[serverID].commandCharacter+Object.keys(help[item]).join('\n'+serversConfig[serverID].commandCharacter)+'\n';
+                //         }
+                //     });
+                // }
                 botSendMessage({
                     to: channelID,
                     message: 'Sorry that is not a command or you do not have access to it. More help coming soon! Try !help'
