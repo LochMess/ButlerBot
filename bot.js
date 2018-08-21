@@ -1130,37 +1130,21 @@ bot.on('message', function (user, userID, channelID, message, event) {
                 }
             }
             if (commandExecuted === false) {
-                console.log('Nothing ran');
                 var commands = [];
                 Object.keys(help).forEach( function(item, index) {
-                    commands = commands.concat(Object.keys(help[item]));
-                });
-                console.log('commands: '+commands);
-                commands.forEach( function(item, index) {
-                    console.log('item: '+item+', cmd: '+cmd+', diff: '+levenshtein.get(item.toString(), cmd.toString()) <= 5);
-                    if (levenshtein.get(item.toString(), cmd.toString()) <= 5) {
-                        botSendMessage({
-                            to: channelID,
-                            message: 'Did you mean '+item+'?'
-                        }).then( function(response) {
-                            react({channelID:channelID, messageID: eventID, reaction: '+1'});
-                        }).catch( function(error) {
-                            errorLog({error: error, channelID: channelID, eventID: eventID});
-                        });
+                    if (userAccessLevel <= serversConfig[serverID].commandAccessLevels[item]) {
+                        commands = commands.concat(Object.keys(help[item]));
                     }
-                })
-                // var helpMessage = '';
-                // if (args[1] === undefined) {
-                //     helpMessage += 'You have access to the following commands, to learn more about a command use '+serversConfig[serverID].commandCharacter+'help <command>\n'
-                //     Object.keys(help).forEach(function(item, index){
-                //         if (userAccessLevel <= serversConfig[serverID].commandAccessLevels[item]) {
-                //             helpMessage += serversConfig[serverID].commandCharacter+Object.keys(help[item]).join('\n'+serversConfig[serverID].commandCharacter)+'\n';
-                //         }
-                //     });
-                // }
+                });
+                var suggestions = [];
+                commands.forEach( function(item, index) {
+                    if (levenshtein.get(item.toString(), cmd.toString()) <= (cmd.toString().length)/2) {
+                        suggestions.push(item);
+                    }
+                });
                 botSendMessage({
                     to: channelID,
-                    message: 'Sorry that is not a command or you do not have access to it. More help coming soon! Try !help'
+                    message: suggestions.length > 0  ? 'Sorry that is not a command or you do not have access to it.\nDid you mean '+suggestions.join(', ')+'?\nPerhaps try !help' : 'Sorry that is not a command or you do not have access to it.\nPerhaps try '+serversConfig[serverID].commandCharacter+'help'
                 }).then( function(response) {
                     react({channelID:channelID, messageID: eventID, reaction: '+1'});
                 }).catch( function(error) {
