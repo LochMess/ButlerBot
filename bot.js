@@ -71,8 +71,38 @@ bot.on('ready', function (evt) {
     botDeleteMessage = util.promisify(bot.deleteMessage).bind(bot);
 });
 
-function test() {
-    console.log('THE test function firing');
+/**
+ * @description Binary search function to inserting into a sorted array.
+ *
+ * @param {Array<Number>} array Sorted array for the new value to be inserted into.
+ * @param {Number} value The value being compared to the array.
+ * @param {Number} start The start of the window of the array being considered.
+ * @param {Number} end The end of the window of the array being considered.
+ */
+function binarySearch(array, value, start, end) {
+    if (start === end) {
+        if (array[start] > value) {
+            return start;
+        }
+        else {
+            return start + 1;
+        }
+    }
+
+    if (start > end) {
+        return start;
+    }
+
+    var middle = Math.round((start+end)/2);
+    if (array[middle] < value) {
+        return binarySearch(array, value, middle+1, end);
+    }
+    else if (array[middle] > value) {
+        return binarySearch(array, value, start, middle-1);
+    }
+    else {
+        return middle;
+    }
 }
 
 /**
@@ -1138,14 +1168,17 @@ bot.on('message', function (user, userID, channelID, message, event) {
                 });
                 var suggestions = [];
                 commands.forEach( function(item, index) {
-                    if (levenshtein.get(item.toString(), cmd.toString()) <= (cmd.toString().length)/2) {
-                        suggestions.push(item);
+                    var levScore = levenshtein.get(item.toString(), cmd.toString());
+                    if (levScore <= (cmd.toString().length)/2) {
+                        suggestions[0] ? suggestions.splice(binarySearch(suggestions, levScore, 0, suggestions.length - 1), 0, {command: item, score: levScore}) : suggestions.push({command: item, score: levScore});
                     }
                 });
+                
                 botSendMessage({
                     to: channelID,
-                    message: suggestions.length > 0  ? 'Sorry that is not a command or you do not have access to it.\nDid you mean '+suggestions.join(', ')+'?\nPerhaps try !help' : 'Sorry that is not a command or you do not have access to it.\nPerhaps try '+serversConfig[serverID].commandCharacter+'help'
+                    message: suggestions.length > 0  ? 'Sorry that is not a command or you do not have access to it.\nDid you mean '+suggestions.map(levObj => levObj.command).join(', ')+'?\nPerhaps try !help' : 'Sorry that is not a command or you do not have access to it.\nPerhaps try '+serversConfig[serverID].commandCharacter+'help'
                 }).then( function(response) {
+                    //TODO make it not a +1 since the command didn't match?
                     react({channelID:channelID, messageID: eventID, reaction: '+1'});
                 }).catch( function(error) {
                     errorLog({error: error, channelID: channelID, eventID: eventID});
