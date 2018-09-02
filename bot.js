@@ -906,11 +906,7 @@ bot.on('message', function (user, userID, channelID, message, event) {
                                 console.log(error);
                                 errorLog({error: error, channelID: channelID, eventID: eventID});
                             });
-<<<<<<< HEAD
                         }, delay*60000);
-=======
-                        }, delay*6000);
->>>>>>> aea35544baf23b39bd8e1233b05c5239efc6a8b7
                         react({channelID:channelID, messageID: eventID, reaction: '+1'});
                         commandExecuted = true;
                         break;
@@ -1168,7 +1164,6 @@ bot.on('message', function (user, userID, channelID, message, event) {
                 Object.keys(help).forEach( function(item, index) {
                     if (userAccessLevel <= serversConfig[serverID].commandAccessLevels[item]) {
                         commands = commands.concat(Object.keys(help[item]));
-<<<<<<< HEAD
                     }
                 });
                 var suggestions = [];
@@ -1179,18 +1174,6 @@ bot.on('message', function (user, userID, channelID, message, event) {
                     }
                 });
 
-=======
-                    }
-                });
-                var suggestions = [];
-                commands.forEach( function(item, index) {
-                    var levScore = levenshtein.get(item.toString(), cmd.toString());
-                    if (levScore <= (cmd.toString().length)/2) {
-                        suggestions[0] ? suggestions.splice(binarySearch(suggestions, levScore, 0, suggestions.length - 1), 0, {command: item, score: levScore}) : suggestions.push({command: item, score: levScore});
-                    }
-                });
-                
->>>>>>> aea35544baf23b39bd8e1233b05c5239efc6a8b7
                 botSendMessage({
                     to: channelID,
                     message: suggestions.length > 0  ? 'Sorry that is not a command or you do not have access to it.\nDid you mean '+suggestions.map(levObj => levObj.command).join(', ')+'?\nPerhaps try !help' : 'Sorry that is not a command or you do not have access to it.\nPerhaps try '+serversConfig[serverID].commandCharacter+'help'
